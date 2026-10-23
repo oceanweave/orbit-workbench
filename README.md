@@ -48,6 +48,7 @@ npm run app:dmg
 
 - 常用命令模板：Pod、Node、Deployment、describe、logs 等，并支持自定义参数。
 - 本地持久化：数据保存到浏览器 `localStorage`，不上传 kubeconfig 内容。
+- 界面主题：支持暗色 / 亮色主题切换，主题选择会自动保存到本机。
 - 响应式布局：桌面、窄桌面和移动宽度均有布局切换。
 
 ## 下一步建议
