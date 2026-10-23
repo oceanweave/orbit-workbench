@@ -150,6 +150,7 @@ h1, h2, h3, p { margin: 0; }
 .link-row { min-height: 67px; display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: 1px solid #27313d; border-radius: 7px; background: #171e27; transition: border-color .18s, background .18s; }
 .link-row:hover { border-color: #3c4e70; background: #1a2330; }
 .link-row[draggable="true"] { cursor: grab; }
+.link-row.is-dragging { cursor: grabbing; border-color: #8ea1ff; border-style: dashed; background: rgba(111,140,255,.12); opacity: .58; }
 .favicon { width: 23px; height: 23px; display: grid; place-items: center; border-radius: 6px; background: #283853; color: #9fb5ff; font-size: 10px; font-weight: 700; }
 .favicon.large { width: 29px; height: 29px; border-radius: 7px; background: linear-gradient(145deg, #27385a, #2b2e55); color: #b0beff; }
 .row-content { min-width: 0; flex: 1; }
@@ -393,6 +394,7 @@ pre code .command-line b { display: block; color: inherit; font-weight: 500; tex
 .app-shell[data-theme='light'] .tag-filter-row button.active { border-color: #c8d3e7; background: #eef2f8; color: #52647f; }
 .app-shell[data-theme='light'] .link-row { border-color: #dce3ed; background: #f8fafc; }
 .app-shell[data-theme='light'] .link-row:hover { border-color: #b8c5e0; background: #f2f5fb; }
+.app-shell[data-theme='light'] .link-row.is-dragging { border-color: #5d73e6; background: #edf0ff; opacity: .68; }
 .app-shell[data-theme='light'] .favicon { background: #e3e9fb; color: #5269c9; }
 .app-shell[data-theme='light'] .favicon.large { background: linear-gradient(145deg, #e0e7fb, #eee8fb); color: #5a6dcc; }
 .app-shell[data-theme='light'] .link-title { color: #243147; }
