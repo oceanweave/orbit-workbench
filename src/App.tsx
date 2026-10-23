@@ -104,7 +104,9 @@ function App() {
   const [theme, setTheme] = usePersistentState<Theme>('orbit-theme', 'dark')
   const [query, setQuery] = useState('')
   const [toast, setToast] = useState('')
+  const [showHelp, setShowHelp] = useState(false)
   const importRef = useRef<HTMLInputElement>(null)
+  const searchRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (!toast) return
@@ -116,6 +118,18 @@ function App() {
     document.documentElement.dataset.theme = theme
     document.documentElement.style.colorScheme = theme
   }, [theme])
+
+  useEffect(() => {
+    const handleShortcut = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault()
+        searchRef.current?.focus()
+        searchRef.current?.select()
+      }
+    }
+    window.addEventListener('keydown', handleShortcut)
+    return () => window.removeEventListener('keydown', handleShortcut)
+  }, [])
 
   useEffect(() => {
     localStorage.removeItem('orbit-default-kube-config')
@@ -145,10 +159,28 @@ function App() {
 
   const copyText = async (value: string, label = '已复制') => {
     try {
-      await navigator.clipboard.writeText(value)
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(value)
+      } else {
+        throw new Error('clipboard API unavailable')
+      }
       notify(label)
     } catch {
-      notify('复制失败，请检查浏览器权限')
+      try {
+        const textarea = document.createElement('textarea')
+        textarea.value = value
+        textarea.setAttribute('readonly', '')
+        textarea.style.position = 'fixed'
+        textarea.style.opacity = '0'
+        document.body.appendChild(textarea)
+        textarea.select()
+        const copied = document.execCommand('copy')
+        textarea.remove()
+        if (!copied) throw new Error('copy command failed')
+        notify(label)
+      } catch {
+        notify('复制失败，请检查浏览器权限')
+      }
     }
   }
 
@@ -232,14 +264,14 @@ function App() {
           <div className="topbar-actions">
             <label className="global-search">
               <Search size={16} />
-              <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索链接、配置、标签…" />
+              <input ref={searchRef} value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索链接、配置、标签…" />
               {query && <button className="icon-button tiny" onClick={() => setQuery('')} aria-label="清空搜索"><X size={13} /></button>}
               <kbd>⌘ K</kbd>
             </label>
             <button className="icon-button theme-toggle" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} aria-label={theme === 'dark' ? '切换到亮色主题' : '切换到暗色主题'} title={theme === 'dark' ? '切换到亮色主题' : '切换到暗色主题'}>
               {theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
             </button>
-            <button className="icon-button" aria-label="帮助"><CircleHelp size={17} /></button>
+            <button className="icon-button" onClick={() => setShowHelp(true)} aria-label="帮助" title="使用帮助"><CircleHelp size={17} /></button>
             <div className="avatar">DY</div>
           </div>
         </header>
@@ -266,6 +298,7 @@ function App() {
         if (file) void handleBookmarkImport(file)
         event.target.value = ''
       }} />
+      {showHelp && <Modal title="使用帮助" onClose={() => setShowHelp(false)}><div className="help-content"><p>Orbit Workbench 的数据默认只保存在本机浏览器中，并会自动保存。</p><div className="help-shortcuts"><div><kbd>⌘ / Ctrl</kbd><strong>+ K</strong><span>聚焦顶部搜索框</span></div><div><kbd>Esc</kbd><span>关闭当前弹窗</span></div><div><kbd>拖拽</kbd><span>把书签或 kubeconfig 拖到左侧高亮分组</span></div></div><p className="muted-copy">书签链接会在默认浏览器中打开；kubeconfig 命令只生成文本，不会自动执行。</p></div></Modal>}
       {toast && <div className="toast"><Check size={16} />{toast}</div>}
     </div>
   )
@@ -765,7 +798,15 @@ function SettingsView({ boards, configs, theme, onThemeChange }: { boards: Bookm
 }
 
 function Modal({ title, onClose, children, className = '' }: { title: string; onClose: () => void; children: React.ReactNode; className?: string }) {
-  return <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.currentTarget === event.target) onClose() }}><div className={`modal ${className}`.trim()}><div className="modal-header"><h2>{title}</h2><button className="icon-button" onClick={onClose} aria-label="关闭"><X size={17} /></button></div>{children}</div></div>
+  useEffect(() => {
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', handleEscape)
+    return () => window.removeEventListener('keydown', handleEscape)
+  }, [onClose])
+
+  return <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.currentTarget === event.target) onClose() }}><div className={`modal ${className}`.trim()} role="dialog" aria-modal="true" aria-label={title}><div className="modal-header"><h2>{title}</h2><button className="icon-button" onClick={onClose} aria-label="关闭"><X size={17} /></button></div>{children}</div></div>
 }
 
 function parseBookmarksHtml(html: string): BookmarkBoard[] {

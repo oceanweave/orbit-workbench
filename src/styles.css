@@ -308,6 +308,14 @@ pre code .command-line b { display: block; color: inherit; font-weight: 500; tex
 .field-error { color: #c94b5f; background: #fff0f2; border: 1px solid #f1b6c0; border-radius: 7px; padding: 8px 10px; font-size: 10px; line-height: 1.4; }
 .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 7px; }
 .toast { position: fixed; right: 27px; bottom: 25px; z-index: 60; display: flex; align-items: center; gap: 7px; padding: 10px 13px; border: 1px solid #33594f; border-radius: 6px; background: #152a25; box-shadow: 0 9px 28px rgba(0,0,0,.3); color: #a2decf; font-size: 10px; }
+.help-content { display: flex; flex-direction: column; gap: 14px; color: var(--muted); font-size: 10px; line-height: 1.65; }
+.help-content p { margin: 0; }
+.help-shortcuts { display: grid; gap: 8px; padding: 12px; border: 1px solid var(--line-soft); border-radius: 7px; background: var(--panel-2); }
+.help-shortcuts > div { display: flex; align-items: center; gap: 7px; }
+.help-shortcuts kbd { min-width: 38px; padding: 3px 5px; border: 1px solid var(--line); border-radius: 4px; background: var(--panel-3); color: var(--text); font: 9px 'DM Mono', monospace; text-align: center; }
+.help-shortcuts strong { color: var(--text); font-size: 10px; font-weight: 600; }
+.help-shortcuts span { color: var(--muted); }
+.muted-copy { color: var(--faint); }
 
 .app-shell { color: var(--text); }
 .theme-toggle { color: var(--orange); }
