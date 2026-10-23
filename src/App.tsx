@@ -184,11 +184,11 @@ function App() {
     notify(`已导入 ${imported.length} 个看板`)
   }
 
-  const addBoard = () => {
-    const name = window.prompt('看板名称', '新看板')?.trim()
-    if (!name) return
+  const addBoard = (requestedName = '新看板') => {
+    const name = requestedName.trim() || '新看板'
+    const id = uid('board')
     const board: BookmarkBoard = {
-      id: uid('board'),
+      id,
       name,
       description: '整理一组重要链接',
       tags: ['新建'],
@@ -198,6 +198,7 @@ function App() {
     }
     setBoards((current) => [board, ...current])
     notify('看板已创建')
+    return id
   }
 
   return (
@@ -278,7 +279,7 @@ function BookmarksView({ boards, setBoards, query, addBoard, onImport, onExport,
   boards: BookmarkBoard[]
   setBoards: React.Dispatch<React.SetStateAction<BookmarkBoard[]>>
   query: string
-  addBoard: () => void
+  addBoard: (name?: string) => string
   onImport: () => void
   onExport: (board: BookmarkBoard) => void
   onExportAll: () => void
@@ -288,16 +289,29 @@ function BookmarksView({ boards, setBoards, query, addBoard, onImport, onExport,
   const [activeBoardId, setActiveBoardId] = useState(boards[0]?.id ?? '')
   const [activeGroupId, setActiveGroupId] = useState('all')
   const [tagFilter, setTagFilter] = useState('全部')
-  const [draggedLink, setDraggedLink] = useState<string | null>(null)
+  const [draggedLink, setDraggedLink] = useState<{ boardId: string; linkId: string } | null>(null)
+  const [dragOverTarget, setDragOverTarget] = useState<string | null>(null)
   const [expandedBoards, setExpandedBoards] = useState<Record<string, boolean>>(() => Object.fromEntries(boards.map((board) => [board.id, true])))
   const [showQuickAdd, setShowQuickAdd] = useState(false)
   const [showGroupAdd, setShowGroupAdd] = useState(false)
+  const [showBoardAdd, setShowBoardAdd] = useState(false)
   const [newLink, setNewLink] = useState({ title: '', url: '', groupId: '' })
   const [newGroupName, setNewGroupName] = useState('')
+  const [newBoardName, setNewBoardName] = useState('')
 
   useEffect(() => {
     if (!boards.some((board) => board.id === activeBoardId)) setActiveBoardId(boards[0]?.id ?? '')
   }, [boards, activeBoardId])
+
+  useEffect(() => {
+    setExpandedBoards((current) => {
+      const next = { ...current }
+      boards.forEach((item) => {
+        if (next[item.id] === undefined) next[item.id] = true
+      })
+      return next
+    })
+  }, [boards])
 
   const board = boards.find((item) => item.id === activeBoardId) ?? boards[0]
   const allTags = useMemo(() => ['全部', ...new Set(board?.links.flatMap((link) => link.tags) ?? [])], [board])
@@ -335,10 +349,52 @@ function BookmarksView({ boards, setBoards, query, addBoard, onImport, onExport,
     notify('分组已添加')
   }
 
-  const moveLink = (targetGroupId: string) => {
+  const openBoardAdd = () => {
+    setNewBoardName(`新看板 ${boards.length + 1}`)
+    setShowBoardAdd(true)
+  }
+
+  const createBoard = () => {
+    const name = newBoardName.trim()
+    if (!name) {
+      notify('请输入看板名称')
+      return
+    }
+    const id = addBoard(name)
+    setActiveBoardId(id)
+    setActiveGroupId('all')
+    setTagFilter('全部')
+    setExpandedBoards((current) => ({ ...current, [id]: true }))
+    setNewBoardName('')
+    setShowBoardAdd(false)
+  }
+
+  const moveLink = (targetBoardId: string, targetGroupId: string) => {
     if (!draggedLink) return
-    updateBoard((current) => ({ ...current, links: current.links.map((link) => link.id === draggedLink ? { ...link, groupId: targetGroupId } : link) }))
+    const sourceBoardId = draggedLink.boardId
+    const sourceLinkId = draggedLink.linkId
+    setBoards((current) => {
+      const sourceBoard = current.find((item) => item.id === sourceBoardId)
+      const targetBoard = current.find((item) => item.id === targetBoardId)
+      const sourceLink = sourceBoard?.links.find((link) => link.id === sourceLinkId)
+      if (!sourceBoard || !targetBoard || !sourceLink || !targetBoard.groups.some((group) => group.id === targetGroupId)) return current
+      const timestamp = new Date().toISOString()
+      if (sourceBoardId === targetBoardId) {
+        return current.map((item) => item.id === sourceBoardId
+          ? { ...item, updatedAt: timestamp, links: item.links.map((link) => link.id === sourceLinkId ? { ...link, groupId: targetGroupId } : link) }
+          : item)
+      }
+      return current.map((item) => {
+        if (item.id === sourceBoardId) return { ...item, updatedAt: timestamp, links: item.links.filter((link) => link.id !== sourceLinkId) }
+        if (item.id === targetBoardId) return { ...item, updatedAt: timestamp, links: [{ ...sourceLink, groupId: targetGroupId }, ...item.links] }
+        return item
+      })
+    })
+    setActiveBoardId(targetBoardId)
+    setActiveGroupId(targetGroupId)
+    setTagFilter('全部')
     setDraggedLink(null)
+    setDragOverTarget(null)
     notify('链接已移动')
   }
 
@@ -355,27 +411,32 @@ function BookmarksView({ boards, setBoards, query, addBoard, onImport, onExport,
     notify('看板已删除')
   }
 
-  if (!board) return <div className="empty-state"><Archive size={30} /><h2>还没有看板</h2><p>导入浏览器书签或创建一个新的工作看板。</p><button className="primary-button" onClick={addBoard}><Plus size={16} />创建看板</button></div>
+  if (!board) return <div className="empty-state"><Archive size={30} /><h2>还没有看板</h2><p>导入浏览器书签或创建一个新的工作看板。</p><button className="primary-button" onClick={() => addBoard()}><Plus size={16} />创建看板</button></div>
 
   return <div className="content-wrap">
     <div className="page-heading">
       <div><div className="eyebrow"><span className="eyebrow-dot" />COLLECTIONS</div><h1>书签看板</h1><p>把浏览器里散落的链接，整理成可以快速行动的工作台。</p></div>
-      <div className="heading-actions"><button className="ghost-button" onClick={onImport}><FileUp size={16} />导入书签</button><button className="ghost-button" onClick={() => { setNewLink({ title: '', url: '', groupId: board.groups[0]?.id ?? '' }); setShowQuickAdd(true) }}><Link2 size={15} />添加链接</button><button className="ghost-button" onClick={() => board && onExport(board)}><FileDown size={16} />导出当前</button><button className="ghost-button" onClick={onExportAll}><Archive size={15} />导出全部</button><button className="primary-button" onClick={addBoard}><Plus size={16} />新建看板</button></div>
+      <div className="heading-actions"><button className="ghost-button" onClick={onImport}><FileUp size={16} />导入书签</button><button className="ghost-button" onClick={() => { setNewLink({ title: '', url: '', groupId: board.groups[0]?.id ?? '' }); setShowQuickAdd(true) }}><Link2 size={15} />添加链接</button><button className="ghost-button" onClick={() => board && onExport(board)}><FileDown size={16} />导出当前</button><button className="ghost-button" onClick={onExportAll}><Archive size={15} />导出全部</button><button className="primary-button" onClick={openBoardAdd}><Plus size={16} />新建看板</button></div>
     </div>
 
     <div className="workspace-grid">
-      <aside className="collection-sidebar">
-        <div className="side-section-header"><span>我的看板 <b>{boards.length}</b></span><button className="icon-button tiny" onClick={addBoard} aria-label="新建看板"><Plus size={15} /></button></div>
+      <aside className={`collection-sidebar ${draggedLink ? 'is-dragging' : ''}`}>
+        <div className="side-section-header"><span>我的看板 <b>{boards.length}</b></span><button className="icon-button tiny" onClick={openBoardAdd} aria-label="新建看板"><Plus size={15} /></button></div>
+        {draggedLink && <div className="sidebar-drop-hint"><GripVertical size={14} /><div><strong>移动链接</strong><span>拖到高亮分组后松开</span></div></div>}
         <div className="board-tree">
           {boards.map((item) => <div key={item.id} className="tree-item-wrap">
             <div className={`tree-item ${item.id === board.id ? 'selected' : ''}`} onClick={() => { setActiveBoardId(item.id); setActiveGroupId('all'); setTagFilter('全部') }}>
               <button className="disclosure" onClick={(event) => { event.stopPropagation(); setExpandedBoards((current) => ({ ...current, [item.id]: !current[item.id] })) }}>{expandedBoards[item.id] ? <ChevronDown size={14} /> : <ChevronRight size={14} />}</button>
               <FolderOpen size={16} className="tree-folder" /> <span>{item.name}</span><b>{item.links.length}</b>
             </div>
-            {expandedBoards[item.id] && item.id === board.id && <div className="tree-children">{item.groups.map((group) => <button key={group.id} className={`tree-child ${activeGroupId === group.id ? 'selected' : ''}`} onClick={() => { setActiveGroupId(group.id); setTagFilter('全部') }}><span className="group-dot" style={{ background: group.color }} />{group.name}<small>{item.links.filter((link) => link.groupId === group.id).length}</small></button>)}</div>}
+            {expandedBoards[item.id] && <div className="tree-children">{item.groups.map((group) => {
+              const targetId = `${item.id}:${group.id}`
+              const isTarget = dragOverTarget === targetId
+              return <button key={group.id} className={`tree-child ${item.id === board.id && activeGroupId === group.id ? 'selected' : ''} ${isTarget ? 'drop-target' : ''}`} aria-label={`${item.name} / ${group.name}，拖放链接到此分组`} onClick={() => { setActiveBoardId(item.id); setActiveGroupId(group.id); setTagFilter('全部') }} onDragEnter={() => { if (draggedLink) setDragOverTarget(targetId) }} onDragOver={(event) => { event.preventDefault(); event.dataTransfer.dropEffect = 'move'; if (draggedLink) setDragOverTarget(targetId) }} onDragLeave={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node)) setDragOverTarget((current) => current === targetId ? null : current) }} onDrop={(event) => { event.preventDefault(); moveLink(item.id, group.id) }}><span className="group-dot" style={{ background: group.color }} /><span className="tree-child-label">{group.name}</span><small>{item.links.filter((link) => link.groupId === group.id).length}</small>{isTarget && <em>松开归类</em>}</button>
+            })}</div>}
           </div>)}
         </div>
-        <button className="add-inline" onClick={addBoard}><Plus size={14} />添加看板</button>
+        <button className="add-inline" onClick={openBoardAdd}><Plus size={14} />添加看板</button>
         <div className="side-helper"><Sparkles size={15} /><div><strong>小提示</strong><p>拖拽链接到左侧分组即可整理。</p></div></div>
       </aside>
 
@@ -388,9 +449,9 @@ function BookmarksView({ boards, setBoards, query, addBoard, onImport, onExport,
         <div className="stage-toolbar"><div className="filter-tabs"><button className={activeGroupId === 'all' ? 'active' : ''} onClick={() => setActiveGroupId('all')}>全部链接 <b>{board.links.length}</b></button>{board.groups.map((group) => <button key={group.id} className={activeGroupId === group.id ? 'active' : ''} onClick={() => setActiveGroupId(group.id)}><span className="group-dot" style={{ background: group.color }} />{group.name}</button>)}</div><button className="toolbar-button" onClick={() => setShowGroupAdd(true)}><Plus size={15} />分组</button></div>
         <div className="tag-filter-row"><span><ListFilter size={14} />标签筛选</span>{allTags.map((tag) => <button key={tag} className={tagFilter === tag ? 'active' : ''} onClick={() => setTagFilter(tag)}>{tag}</button>)}</div>
 
-        {visibleLinks.length ? <div className="link-list">{visibleLinks.map((link) => <LinkRow key={link.id} link={link} group={board.groups.find((group) => group.id === link.groupId)} onCopy={onCopy} onDelete={() => { updateBoard((current) => ({ ...current, links: current.links.filter((item) => item.id !== link.id) })); notify('链接已删除') }} onDragStart={() => setDraggedLink(link.id)} />)}</div> : <div className="empty-board"><Search size={24} /><h3>没有匹配的链接</h3><p>试试搜索其他关键词，或切换标签筛选。</p><button className="ghost-button" onClick={() => { setTagFilter('全部'); setActiveGroupId('all') }}>清除筛选</button></div>}
+        {visibleLinks.length ? <div className="link-list">{visibleLinks.map((link) => <LinkRow key={link.id} link={link} group={board.groups.find((group) => group.id === link.groupId)} onCopy={onCopy} onDelete={() => { updateBoard((current) => ({ ...current, links: current.links.filter((item) => item.id !== link.id) })); notify('链接已删除') }} onDragStart={(event) => { event.dataTransfer.effectAllowed = 'move'; event.dataTransfer.setData('text/plain', `${board.id}:${link.id}`); setDraggedLink({ boardId: board.id, linkId: link.id }) }} onDragEnd={() => { setDraggedLink(null); setDragOverTarget(null) }} />)}</div> : <div className="empty-board"><Search size={24} /><h3>没有匹配的链接</h3><p>试试搜索其他关键词，或切换标签筛选。</p><button className="ghost-button" onClick={() => { setTagFilter('全部'); setActiveGroupId('all') }}>清除筛选</button></div>}
 
-        <div className="drop-zones"><span>拖放到分组</span>{board.groups.map((group) => <button key={group.id} onDragOver={(event) => event.preventDefault()} onDrop={() => moveLink(group.id)}><span className="group-dot" style={{ background: group.color }} />{group.name}<ChevronRight size={13} /></button>)}</div>
+        <div className="drop-zones"><span>拖放到分组</span>{board.groups.map((group) => <button key={group.id} className={dragOverTarget === `stage:${group.id}` ? 'drop-target' : ''} onDragEnter={() => { if (draggedLink) setDragOverTarget(`stage:${group.id}`) }} onDragOver={(event) => { event.preventDefault(); event.dataTransfer.dropEffect = 'move'; if (draggedLink) setDragOverTarget(`stage:${group.id}`) }} onDragLeave={() => setDragOverTarget((current) => current === `stage:${group.id}` ? null : current)} onDrop={(event) => { event.preventDefault(); moveLink(board.id, group.id) }}><span className="group-dot" style={{ background: group.color }} />{group.name}<ChevronRight size={13} /></button>)}</div>
       </section>
 
       <aside className="board-inspector">
@@ -404,12 +465,13 @@ function BookmarksView({ boards, setBoards, query, addBoard, onImport, onExport,
     </div>
     {showQuickAdd && <Modal title="添加链接" onClose={() => setShowQuickAdd(false)}><div className="form-stack"><label>链接名称<input value={newLink.title} onChange={(event) => setNewLink((current) => ({ ...current, title: event.target.value }))} placeholder="例如：Kubernetes 文档" autoFocus /></label><label>网址<input value={newLink.url} onChange={(event) => setNewLink((current) => ({ ...current, url: event.target.value }))} placeholder="https://" /></label><label>所属分组<select value={newLink.groupId || board.groups[0]?.id} onChange={(event) => setNewLink((current) => ({ ...current, groupId: event.target.value }))}>{board.groups.map((group) => <option value={group.id} key={group.id}>{group.name}</option>)}</select></label><div className="modal-actions"><button className="ghost-button" onClick={() => setShowQuickAdd(false)}>取消</button><button className="primary-button" onClick={addLink}>保存链接</button></div></div></Modal>}
     {showGroupAdd && <Modal title="添加分组" onClose={() => setShowGroupAdd(false)}><div className="form-stack"><label>分组名称<input value={newGroupName} onChange={(event) => setNewGroupName(event.target.value)} placeholder="例如：设计灵感" autoFocus /></label><div className="modal-actions"><button className="ghost-button" onClick={() => setShowGroupAdd(false)}>取消</button><button className="primary-button" onClick={addGroup}>保存分组</button></div></div></Modal>}
+    {showBoardAdd && <Modal title="新建书签看板" onClose={() => setShowBoardAdd(false)}><div className="form-stack"><label>看板名称<input value={newBoardName} onChange={(event) => setNewBoardName(event.target.value)} placeholder="例如：前端开发" autoFocus onKeyDown={(event) => { if (event.key === 'Enter') createBoard() }} /></label><p className="form-hint">创建后会自动打开新看板，并附带一个“未分组”分组。</p><div className="modal-actions"><button className="ghost-button" onClick={() => setShowBoardAdd(false)}>取消</button><button className="primary-button" onClick={createBoard}><Save size={14} />创建看板</button></div></div></Modal>}
   </div>
 }
 
-function LinkRow({ link, group, onCopy, onDelete, onDragStart }: { link: BookmarkBoard['links'][number]; group?: BookmarkBoard['groups'][number]; onCopy: (value: string, label?: string) => void; onDelete: () => void; onDragStart: () => void }) {
+function LinkRow({ link, group, onCopy, onDelete, onDragStart, onDragEnd }: { link: BookmarkBoard['links'][number]; group?: BookmarkBoard['groups'][number]; onCopy: (value: string, label?: string) => void; onDelete: () => void; onDragStart: (event: React.DragEvent<HTMLElement>) => void; onDragEnd: () => void }) {
   const hostname = link.url.replace(/^(https?:\/\/|chrome-extension:\/\/)/, '').split('/')[0]
-  return <article className="link-row" draggable onDragStart={onDragStart}>
+  return <article className="link-row" draggable onDragStart={onDragStart} onDragEnd={onDragEnd}>
     <div className="favicon large">{link.title.slice(0, 1)}</div>
     <div className="row-content"><a className="link-title" href={link.url} target="_blank" rel="noreferrer">{link.title}<ExternalLink size={13} /></a><div className="link-host">{hostname}</div>{link.description && <p>{link.description}</p>}</div>
     <span className="group-label row-group"><span className="group-dot" style={{ background: group?.color }} />{group?.name ?? '未分组'}</span>
