@@ -33,15 +33,18 @@ import {
   Settings2,
   ShieldCheck,
   Sparkles,
+  Sun,
   Terminal,
   Trash2,
   X,
   Zap,
+  Moon,
 } from 'lucide-react'
 import { commandTemplates, initialBoards, initialKubeConfigs, initialKubeGroups } from './data'
 import type { BookmarkBoard, KubeConfig, KubeGroup } from './types'
 
 type Section = 'bookmarks' | 'kubeconfig' | 'settings'
+type Theme = 'dark' | 'light'
 
 const uid = (prefix: string) => `${prefix}-${Math.random().toString(36).slice(2, 8)}-${Date.now().toString(36).slice(-4)}`
 
@@ -65,6 +68,7 @@ function App() {
   const [boards, setBoards] = usePersistentState<BookmarkBoard[]>('orbit-boards', initialBoards)
   const [kubeConfigs, setKubeConfigs] = usePersistentState<KubeConfig[]>('orbit-kube-configs', initialKubeConfigs)
   const [kubeGroups, setKubeGroups] = usePersistentState<KubeGroup[]>('orbit-kube-groups', initialKubeGroups)
+  const [theme, setTheme] = usePersistentState<Theme>('orbit-theme', 'dark')
   const [query, setQuery] = useState('')
   const [toast, setToast] = useState('')
   const importRef = useRef<HTMLInputElement>(null)
@@ -74,6 +78,11 @@ function App() {
     const timer = window.setTimeout(() => setToast(''), 2200)
     return () => window.clearTimeout(timer)
   }, [toast])
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme
+    document.documentElement.style.colorScheme = theme
+  }, [theme])
 
   const notify = (message: string) => setToast(message)
 
@@ -135,7 +144,7 @@ function App() {
   }
 
   return (
-    <div className="app-shell">
+    <div className="app-shell" data-theme={theme}>
       <aside className="app-rail">
         <div className="brand-mark" aria-label="Orbit Workbench">
           <div className="brand-orbit"><span /></div>
@@ -169,6 +178,9 @@ function App() {
               {query && <button className="icon-button tiny" onClick={() => setQuery('')} aria-label="清空搜索"><X size={13} /></button>}
               <kbd>⌘ K</kbd>
             </label>
+            <button className="icon-button theme-toggle" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} aria-label={theme === 'dark' ? '切换到亮色主题' : '切换到暗色主题'} title={theme === 'dark' ? '切换到亮色主题' : '切换到暗色主题'}>
+              {theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
+            </button>
             <button className="icon-button" aria-label="帮助"><CircleHelp size={17} /></button>
             <div className="avatar">DY</div>
           </div>
@@ -188,7 +200,7 @@ function App() {
           />
         )}
         {section === 'kubeconfig' && <KubeconfigView configs={kubeConfigs} setConfigs={setKubeConfigs} groups={kubeGroups} setGroups={setKubeGroups} query={query} onCopy={copyText} notify={notify} />}
-        {section === 'settings' && <SettingsView boards={boards} configs={kubeConfigs} />}
+        {section === 'settings' && <SettingsView boards={boards} configs={kubeConfigs} theme={theme} onThemeChange={setTheme} />}
       </main>
 
       <input ref={importRef} type="file" accept=".html,.htm" hidden onChange={(event) => {
@@ -415,8 +427,8 @@ function KubeconfigView({ configs, setConfigs, groups, setGroups, query, onCopy,
   </div>
 }
 
-function SettingsView({ boards, configs }: { boards: BookmarkBoard[]; configs: KubeConfig[] }) {
-  return <div className="content-wrap settings-page"><div className="page-heading"><div><div className="eyebrow"><span className="eyebrow-dot" />WORKSPACE</div><h1>偏好设置</h1><p>检查工作区状态和本地数据。</p></div></div><div className="settings-grid"><section className="settings-card"><div className="settings-card-icon"><Laptop size={18} /></div><div><h3>本地工作区</h3><p>当前版本将数据保存到浏览器本地存储，适合单机使用和快速验证。</p></div><span className="status-badge"><span />正常</span></section><section className="settings-card"><div className="settings-card-icon green"><Archive size={18} /></div><div><h3>数据概览</h3><p>{boards.length} 个书签看板 · {configs.length} 个 kubeconfig · 自动保存已开启</p></div><span className="status-badge"><span />已同步</span></section><section className="settings-card"><div className="settings-card-icon orange"><Code2 size={18} /></div><div><h3>跨平台路线</h3><p>桌面端可接入 Tauri 文件系统；Apple 端可复用同一数据模型，接入 iCloud 或 CloudKit。</p></div><span className="version-label">v0.1</span></section></div></div>
+function SettingsView({ boards, configs, theme, onThemeChange }: { boards: BookmarkBoard[]; configs: KubeConfig[]; theme: Theme; onThemeChange: React.Dispatch<React.SetStateAction<Theme>> }) {
+  return <div className="content-wrap settings-page"><div className="page-heading"><div><div className="eyebrow"><span className="eyebrow-dot" />WORKSPACE</div><h1>偏好设置</h1><p>调整界面显示并检查工作区状态。</p></div></div><div className="settings-grid"><section className="settings-card theme-settings-card"><div className={`settings-card-icon ${theme === 'light' ? 'orange' : ''}`}>{theme === 'light' ? <Sun size={18} /> : <Moon size={18} />}</div><div><h3>界面主题</h3><p>在暗色和亮色界面之间切换，选择会自动保存到本机。</p></div><div className="theme-switch" role="group" aria-label="界面主题"><button className={theme === 'dark' ? 'active' : ''} onClick={() => onThemeChange('dark')}><Moon size={13} />暗色</button><button className={theme === 'light' ? 'active' : ''} onClick={() => onThemeChange('light')}><Sun size={13} />亮色</button></div></section><section className="settings-card"><div className="settings-card-icon"><Laptop size={18} /></div><div><h3>本地工作区</h3><p>当前版本将数据保存到浏览器本地存储，适合单机使用和快速验证。</p></div><span className="status-badge"><span />正常</span></section><section className="settings-card"><div className="settings-card-icon green"><Archive size={18} /></div><div><h3>数据概览</h3><p>{boards.length} 个书签看板 · {configs.length} 个 kubeconfig · 自动保存已开启</p></div><span className="status-badge"><span />已同步</span></section><section className="settings-card"><div className="settings-card-icon orange"><Code2 size={18} /></div><div><h3>跨平台路线</h3><p>桌面端可接入 Tauri 文件系统；Apple 端可复用同一数据模型，接入 iCloud 或 CloudKit。</p></div><span className="version-label">v0.1</span></section></div></div>
 }
 
 function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
