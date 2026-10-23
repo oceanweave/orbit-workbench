@@ -234,7 +234,8 @@ h1, h2, h3, p { margin: 0; }
 .config-row { width: 100%; display: flex; align-items: center; gap: 9px; min-height: 70px; margin-top: 6px; padding: 8px 7px; border: 1px solid transparent; border-radius: 7px; background: transparent; text-align: left; }
 .config-row:hover { background: #18222c; }
 .config-row.active { border-color: #35446b; background: rgba(111,140,255,.1); }
-.config-row.dragging { opacity: .45; border-style: dashed; }
+.config-row.dragging { opacity: .45; border-style: dashed; transform: scale(.9); transform-origin: left center; }
+.kube-drag-preview { border-color: #44c7a5; background: #18382f; color: #dffaf1; }
 .config-file-icon { width: 31px; height: 31px; display: grid; flex: 0 0 auto; place-items: center; border-radius: 7px; background: #222d40; color: #9babff; }
 .config-row-main { min-width: 0; flex: 1; }
 .config-row-main strong, .config-row-main > span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -397,6 +398,9 @@ pre code .command-line b { display: block; color: inherit; font-weight: 500; tex
 .app-shell[data-theme='light'] .link-row:hover { border-color: #b8c5e0; background: #f2f5fb; }
 .app-shell[data-theme='light'] .link-row.is-dragging { border-color: #5d73e6; background: #edf0ff; opacity: .68; }
 .app-shell[data-theme='light'] .drag-preview { border-color: #7d8fe9; background: #ffffff; color: #3f4f72; box-shadow: 0 8px 22px rgba(72, 89, 137, .2); }
+.app-shell[data-theme='light'] .kube-drag-preview { border-color: #39a989; background: #effaf6; color: #257d68; }
+html[data-theme='light'] .drag-preview { border-color: #7d8fe9; background: #ffffff; color: #3f4f72; box-shadow: 0 8px 22px rgba(72, 89, 137, .2); }
+html[data-theme='light'] .kube-drag-preview { border-color: #39a989; background: #effaf6; color: #257d68; }
 .app-shell[data-theme='light'] .favicon { background: #e3e9fb; color: #5269c9; }
 .app-shell[data-theme='light'] .favicon.large { background: linear-gradient(145deg, #e0e7fb, #eee8fb); color: #5a6dcc; }
 .app-shell[data-theme='light'] .link-title { color: #243147; }
@@ -441,6 +445,7 @@ pre code .command-line b { display: block; color: inherit; font-weight: 500; tex
 .app-shell[data-theme='light'] .config-list { background: #fbfcfd; }
 .app-shell[data-theme='light'] .config-row:hover { background: #f0f4f9; }
 .app-shell[data-theme='light'] .config-row.active { border-color: #bdc9ee; background: rgba(93, 115, 230, .08); }
+.app-shell[data-theme='light'] .config-row.dragging { border-color: #5d73e6; background: #edf0ff; opacity: .68; }
 .app-shell[data-theme='light'] .config-file-icon { background: #e8edff; color: #5e73d8; }
 .app-shell[data-theme='light'] .config-row-main strong { color: #3e4c62; }
 .app-shell[data-theme='light'] .config-row-main > span { color: #8593a6; }
