@@ -11,6 +11,10 @@ npm run dev
 
 打开终端输出的本地地址即可使用。应用数据保存在当前浏览器或 Electron 用户目录的 `localStorage` 中。
 
+CI 和需要严格复现依赖的环境使用 `npm ci`。
+
+代码仓库：<https://github.com/oceanweave/orbit-workbench>
+
 生产构建：
 
 ```bash
