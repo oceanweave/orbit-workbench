@@ -53,6 +53,8 @@ npm run app:dmg
 - 应用能从 `release/mac-arm64/Orbit Workbench.app` 启动。
 - 书签页面和 Kubeconfig 页面均能打开。
 - 亮色/暗色主题、分组、详情、Context 和命令复制流程正常。
+- 命令管理弹窗中的长名称、长命令和说明不会被输入框截断。
+- Kubeconfig 添加流程验证了无后缀文件、`.txt` 文件和粘贴内容。
 - 发布包不包含测试数据或敏感文件。
 
 ## 远程仓库

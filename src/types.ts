@@ -34,6 +34,9 @@ export type KubeConfig = {
   id: string
   name: string
   path: string
+  metaName?: string
+  source?: 'file' | 'directory' | 'clipboard' | 'managed'
+  content?: string
   groupId: string
   context: string
   contexts?: string[]

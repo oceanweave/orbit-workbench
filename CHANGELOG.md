@@ -11,9 +11,13 @@
 - 内置 Pod、Node、Service、Deployment、rollout、describe、logs、top 和创建时间排序命令。
 - 自定义命令模板、亮色/暗色主题和本地持久化。
 - Electron macOS arm64 `.app` 与 DMG 打包配置。
+- 原始 kubeconfig YAML 查看和编辑，支持桌面端写回源文件。
+- 支持从文件、目录或剪贴板添加配置，并兼容无后缀和 `.txt` 文件。
+- 每个配置支持独立 META 变量名，命令路径包含特殊字符时自动安全转义。
+- 常用命令编辑区加宽，分组颜色改为预设色块选择。
 
 ### Notes
 
-- 当前只保存 Kubeconfig 元数据，不解析或上传配置文件内容。
+- 当前数据保存在本地；桌面版可按用户操作写回 kubeconfig 源文件，不会上传配置内容。
 - 当前 macOS 包未配置 Developer ID 签名和公证。
 - SSH 管理、原生文件解析、Windows 打包和云同步暂未实现。
