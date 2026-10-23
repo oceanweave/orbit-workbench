@@ -33,8 +33,12 @@ export type KubeGroup = {
 export type KubeConfig = {
   id: string
   name: string
+  /** Shell-safe environment variable name used for command generation. */
+  envName?: string
+  /** @deprecated Kept for migration from pre-0.1.1 data. */
   alias?: string
   path: string
+  /** @deprecated Kept for migration from pre-0.1.1 data. */
   metaName?: string
   source?: 'file' | 'directory' | 'clipboard' | 'managed'
   content?: string

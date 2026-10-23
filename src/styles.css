@@ -227,7 +227,7 @@ h1, h2, h3, p { margin: 0; }
 .config-row-main > span { margin-top: 4px; color: #667488; font-family: 'DM Mono', monospace; font-size: 8px; }
 .config-row-meta { display: flex; align-items: center; gap: 4px; margin-top: 6px; overflow: hidden; }
 .context-pill { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 130px; color: #6f9b93; font-family: 'DM Mono', monospace; font-size: 8px; }
-.config-alias-pill { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 110px; color: #8b9bcb; font-size: 8px; }
+.config-env-pill { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 110px; color: #8b9bcb; font-size: 8px; }
 .config-row-meta em { padding: 2px 4px; border-radius: 3px; background: #26313b; color: #8490a1; font-size: 8px; font-style: normal; }
 .row-chevron { color: #536174; }
 .add-config-row { width: 100%; display: flex; justify-content: center; align-items: center; gap: 6px; margin-top: 14px; padding: 8px; color: #7183db; background: transparent; border: 1px dashed #35405a; border-radius: 5px; font-size: 9px; }
@@ -248,9 +248,9 @@ h1, h2, h3, p { margin: 0; }
 .selected-config span { color: #7889a3; font-size: 8px; }
 .selected-config strong { margin-top: 3px; color: #d9e1ee; font-size: 11px; }
 .selected-config small { margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #7690a4; font-family: 'DM Mono', monospace; font-size: 8px; }
-.selected-alias { display: flex; align-items: center; gap: 6px; margin-top: 7px; color: #7889a3; font-size: 8px; }
-.selected-alias span { flex: 0 0 auto; margin: 0; }
-.selected-alias input { width: min(190px, 100%); height: 25px; margin: 0; padding: 0 7px; border-color: #344663; background: #101a25; color: #bfcaff; font-size: 9px; }
+.selected-env-name { display: flex; align-items: center; gap: 6px; margin-top: 7px; color: #7889a3; font-size: 8px; }
+.selected-env-name span { flex: 0 0 auto; margin: 0; }
+.selected-env-name input { width: min(190px, 100%); height: 25px; margin: 0; padding: 0 7px; border-color: #344663; background: #101a25; color: #bfcaff; font-size: 9px; }
 .command-form { margin-top: 22px; }
 .command-form label, .form-stack label { display: block; color: #8996a8; font-size: 9px; }
 select, input, textarea { width: 100%; height: 34px; margin-top: 7px; padding: 0 9px; border: 1px solid #303c4c; border-radius: 5px; outline: 0; background: #141c25; color: #ccd6e6; font-size: 10px; }
@@ -261,10 +261,10 @@ select:focus, input:focus, textarea:focus { border-color: #647ce9; }
 .preview-header { min-height: 34px; display: flex; align-items: center; justify-content: space-between; padding: 0 10px; border-bottom: 1px solid #233339; color: #7a958f; font-family: 'DM Mono', monospace; font-size: 9px; }
 .copy-command { display: inline-flex; align-items: center; gap: 5px; padding: 5px 6px; border-radius: 4px; background: transparent; color: #6fc2a9; font-family: 'Manrope', sans-serif; font-size: 9px; }
 .copy-command:hover { background: #1b2a29; color: #a3e4d0; }
-pre { margin: 0; padding: 13px 12px; overflow-x: auto; color: #a3d5c6; font: 10px/1.8 'DM Mono', monospace; }
-pre code .command-line { display: flex; align-items: baseline; min-width: max-content; white-space: pre; }
-pre code .command-line i { flex: 0 0 44px; margin-right: 12px; color: #5b8478; font-style: normal; text-align: right; user-select: none; }
-pre code .command-line b { color: inherit; font-weight: 500; }
+pre { margin: 0; padding: 13px 12px; overflow-x: auto; color: #a3d5c6; font: 10px/1.8 'DM Mono', monospace; text-align: left; }
+pre code { display: block; width: max-content; min-width: 100%; }
+pre code .command-line { display: block; width: max-content; min-width: 100%; white-space: pre; text-align: left; }
+pre code .command-line b { display: block; color: inherit; font-weight: 500; text-align: left; }
 .command-note { display: flex; align-items: center; gap: 6px; margin-top: 13px; color: #668d84; font-size: 9px; }
 .command-note svg { color: #54b99c; }
 
@@ -431,8 +431,8 @@ pre code .command-line b { color: inherit; font-weight: 500; }
 .app-shell[data-theme='light'] .selected-config span { color: #7e8da2; }
 .app-shell[data-theme='light'] .selected-config strong { color: #39485d; }
 .app-shell[data-theme='light'] .selected-config small { color: #6e8790; }
-.app-shell[data-theme='light'] .selected-alias input { border-color: #cbd6ea; background: #ffffff; color: #5268c7; }
-.app-shell[data-theme='light'] .config-alias-pill { color: #6578bd; }
+.app-shell[data-theme='light'] .selected-env-name input { border-color: #cbd6ea; background: #ffffff; color: #5268c7; }
+.app-shell[data-theme='light'] .config-env-pill { color: #6578bd; }
 .app-shell[data-theme='light'] .kube-groups.is-dragging .kube-group-item { border-color: #c6d1e5; background: #f7f9fd; color: #657590; }
 .app-shell[data-theme='light'] .kube-groups.is-dragging .kube-group-item.drop-target { border-color: #7184e0; background: #eef2ff; color: #4e62be; box-shadow: inset 0 0 0 1px #c6d1f0, 0 0 0 2px rgba(111,140,255,.12); }
 .app-shell[data-theme='light'] .kube-group-item span small { color: #5268c7; }
@@ -445,7 +445,6 @@ pre code .command-line b { color: inherit; font-weight: 500; }
 .app-shell[data-theme='light'] .preview-header { border-color: #d7e5e2; color: #568579; }
 .app-shell[data-theme='light'] .copy-command:hover { background: #dff2ec; }
 .app-shell[data-theme='light'] pre { color: #277866; }
-.app-shell[data-theme='light'] pre code i { color: #78a99e; }
 .app-shell[data-theme='light'] .command-note { color: #6a9489; }
 .app-shell[data-theme='light'] .empty-state { color: #7e8da2; }
 .app-shell[data-theme='light'] .empty-state h2 { color: #45546a; }

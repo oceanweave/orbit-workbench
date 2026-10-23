@@ -45,12 +45,12 @@ npm run app:dmg
 - 浏览器书签导入：支持 Netscape Bookmark HTML，顶层文件夹映射为看板，嵌套文件夹映射为分组。
 - 看板导出：当前看板导出为 `.orbit.json`，适合备份和迁移。
 - Kubeconfig：配置文件路径、环境分组、标签、Context 选择、详情编辑和拖拽归类；详情页可查看和修改原始 YAML，并在桌面版写回源文件。
-- Kubeconfig 导入：支持选择任意文本文件（包括无后缀、`.yaml`、`.yml`、`.config`、`.conf`、`.txt`），也支持选择保存目录后从剪贴板或文本框创建配置；每个配置有独立、可自定义的配置别名，命令会自动生成对应的 `META_*` 变量。
-- 命令生成器：点击任意 kubeconfig 后选择 Context、命令模板、命名空间和附加参数，实时生成并复制；支持配置别名、自定义命令和默认命令：
+- Kubeconfig 导入：支持选择任意文本文件（包括无后缀、`.yaml`、`.yml`、`.config`、`.conf`、`.txt`），也支持选择保存目录后从剪贴板或文本框创建配置；每个配置有独立、可自定义的环境变量名称，命令会自动生成对应的 shell 环境变量。
+- 命令生成器：点击任意 kubeconfig 后选择 Context、命令模板、命名空间和附加参数，实时生成并复制；支持环境变量名称、自定义命令和默认命令：
 
   ```bash
-  META_PRODUCTION=~/.kube/prod.config
-  KUBECONFIG=$META_PRODUCTION kubectl get pods -o wide -n dev
+  PRODUCTION=~/.kube/prod.config
+  KUBECONFIG=$PRODUCTION kubectl get pods -o wide -n dev
   ```
 
 - 常用命令模板：Pod、Node、Service、Deployment、rollout、describe、logs、资源排行和按创建时间排序等，并支持自定义命令。
