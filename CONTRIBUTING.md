@@ -1,0 +1,78 @@
+# 贡献指南
+
+## 开发环境
+
+- Node.js 20 或更高版本
+- macOS 本地打包需要 Apple Silicon 环境；Windows 打包可在后续补充对应目标
+
+首次运行：
+
+```bash
+npm install
+npm run dev
+```
+
+## 提交前检查
+
+每次提交前至少运行：
+
+```bash
+npm run check
+npm run build
+git diff --check
+```
+
+涉及页面交互时，还应在浏览器开发服务器或 Electron 应用中手动验证对应流程，并检查控制台没有错误。
+
+## 分支和提交
+
+- `main` 保持可构建状态。
+- 功能使用 `feat:`，修复使用 `fix:`，文档使用 `docs:`，重构使用 `refactor:`。
+- 一个提交尽量只包含一个完整目的；不要把本地 `dist/`、`release/`、日志或个人书签文件提交进仓库。
+- 提交前确认没有把真实 kubeconfig 内容、证书、Token 或私有地址写入示例数据。
+
+## 数据和隐私边界
+
+当前应用只保存本地元数据。新增功能时应遵循以下约束：
+
+1. 不读取或上传 kubeconfig 文件的证书、Token 和私钥内容。
+2. 命令生成器默认只生成可复制文本，不在后台执行命令。
+3. 导入、导出和迁移逻辑要兼容旧数据，并为新增字段提供默认值。
+
+## 发布检查
+
+生成 macOS 本地包：
+
+```bash
+npm run app:dir
+npm run app:dmg
+```
+
+发布前确认：
+
+- 应用能从 `release/mac-arm64/Orbit Workbench.app` 启动。
+- 书签页面和 Kubeconfig 页面均能打开。
+- 亮色/暗色主题、分组、详情、Context 和命令复制流程正常。
+- 发布包不包含测试数据或敏感文件。
+
+## 远程仓库
+
+默认远程仓库为：
+
+```text
+git@github.com:oceanweave/orbit-workbench.git
+```
+
+首次配置或检查远程地址：
+
+```bash
+git remote -v
+git remote set-url origin git@github.com:oceanweave/orbit-workbench.git
+```
+
+推送前先同步远程 `main`，确认没有冲突后再推送：
+
+```bash
+git fetch origin
+git push -u origin main
+```

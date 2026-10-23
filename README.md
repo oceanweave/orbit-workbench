@@ -2,12 +2,14 @@
 
 Orbit Workbench 是一个本地优先的书签看板与 kubeconfig 管理工作台。当前版本用 React + TypeScript + Vite 实现，适合先验证交互和数据模型，后续可以直接接入 Tauri 生成 macOS / Windows 桌面应用，也可以将同一套模型迁移到 SwiftUI 的 Apple 客户端。
 
-## 运行
+## 快速开始
 
 ```bash
 npm install
 npm run dev
 ```
+
+打开终端输出的本地地址即可使用。应用数据保存在当前浏览器或 Electron 用户目录的 `localStorage` 中。
 
 生产构建：
 
@@ -50,6 +52,22 @@ npm run app:dmg
 - 本地持久化：数据保存到浏览器 `localStorage`，不上传 kubeconfig 内容。
 - 界面主题：支持暗色 / 亮色主题切换，主题选择会自动保存到本机。
 - 响应式布局：桌面、窄桌面和移动宽度均有布局切换。
+
+## 项目结构和协作
+
+核心代码集中在 `src/`，Electron 主进程位于 `electron/`。数据模型和内置示例数据分别维护在 `src/types.ts` 与 `src/data.ts`；页面状态、导入导出和命令生成逻辑目前集中在 `src/App.tsx`，后续按功能域增长时再拆分为 `src/features/`、`src/components/` 和 `src/lib/`。
+
+- [架构说明](docs/architecture.md)：数据流、持久化键、命令生成和桌面打包边界。
+- [贡献指南](CONTRIBUTING.md)：开发、验证、提交和发布流程。
+- [版本记录](CHANGELOG.md)：当前版本能力和已知限制。
+
+提交前运行：
+
+```bash
+npm run check
+npm run build
+git diff --check
+```
 
 ## 下一步建议
 
