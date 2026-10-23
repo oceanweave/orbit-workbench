@@ -38,15 +38,15 @@ npm run app:dmg
 - 组织能力：看板和分组树、链接拖拽到分组、分组计数、标签筛选。
 - 浏览器书签导入：支持 Netscape Bookmark HTML，顶层文件夹映射为看板，嵌套文件夹映射为分组。
 - 看板导出：当前看板导出为 `.orbit.json`，适合备份和迁移。
-- Kubeconfig：配置文件路径、环境分组、标签、上下文信息和拖拽归类。
-- 命令生成器：选择 kubeconfig、命令模板、命名空间和附加参数，实时生成并复制：
+- Kubeconfig：配置文件路径、环境分组、标签、Context 选择、详情编辑和拖拽归类。
+- 命令生成器：选择默认 kubeconfig、Context、命令模板、命名空间和附加参数，实时生成并复制；支持自定义命令和默认命令：
 
   ```bash
   META=~/.kube/prod.config
   KUBECONFIG=$META kubectl get pods -o wide -n dev
   ```
 
-- 常用命令模板：Pod、Node、Deployment、describe、logs 等，并支持自定义参数。
+- 常用命令模板：Pod、Node、Service、Deployment、rollout、describe、logs、资源排行和按创建时间排序等，并支持自定义命令。
 - 本地持久化：数据保存到浏览器 `localStorage`，不上传 kubeconfig 内容。
 - 界面主题：支持暗色 / 亮色主题切换，主题选择会自动保存到本机。
 - 响应式布局：桌面、窄桌面和移动宽度均有布局切换。

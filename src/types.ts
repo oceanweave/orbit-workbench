@@ -36,8 +36,10 @@ export type KubeConfig = {
   path: string
   groupId: string
   context: string
+  contexts?: string[]
   server: string
   tags: string[]
+  createdAt?: string
   updatedAt: string
 }
 
@@ -46,4 +48,6 @@ export type CommandTemplate = {
   name: string
   command: string
   description: string
+  builtin?: boolean
+  createdAt?: string
 }

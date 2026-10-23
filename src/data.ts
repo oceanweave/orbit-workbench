@@ -49,17 +49,22 @@ export const initialKubeGroups: KubeGroup[] = [
 ]
 
 export const initialKubeConfigs: KubeConfig[] = [
-  { id: 'kube-prod', name: 'production', path: '~/.kube/prod.config', groupId: 'kube-group-work', context: 'prod-shanghai', server: 'https://k8s.prod.example.com', tags: ['生产', '只读'], updatedAt: '2 小时前' },
-  { id: 'kube-staging', name: 'staging', path: '~/workspace/infra/staging.yaml', groupId: 'kube-group-work', context: 'staging-shanghai', server: 'https://k8s.staging.example.com', tags: ['预发'], updatedAt: '昨天' },
-  { id: 'kube-local', name: 'local-kind', path: '~/.kube/kind.config', groupId: 'kube-group-lab', context: 'kind-dev', server: 'https://127.0.0.1:5443', tags: ['本地', '开发'], updatedAt: '3 天前' },
-  { id: 'kube-minikube', name: 'minikube', path: '~/.kube/minikube', groupId: 'kube-group-lab', context: 'minikube', server: 'https://192.168.49.2:8443', tags: ['本地'], updatedAt: '上周' },
+  { id: 'kube-prod', name: 'production', path: '~/.kube/prod.config', groupId: 'kube-group-work', context: 'prod-shanghai', contexts: ['prod-shanghai', 'prod-beijing'], server: 'https://k8s.prod.example.com', tags: ['生产', '只读'], createdAt: '2026-10-21T08:30:00.000Z', updatedAt: '2 小时前' },
+  { id: 'kube-staging', name: 'staging', path: '~/workspace/infra/staging.yaml', groupId: 'kube-group-work', context: 'staging-shanghai', contexts: ['staging-shanghai', 'staging-beijing'], server: 'https://k8s.staging.example.com', tags: ['预发'], createdAt: '2026-10-20T06:20:00.000Z', updatedAt: '昨天' },
+  { id: 'kube-local', name: 'local-kind', path: '~/.kube/kind.config', groupId: 'kube-group-lab', context: 'kind-dev', contexts: ['kind-dev'], server: 'https://127.0.0.1:5443', tags: ['本地', '开发'], createdAt: '2026-10-18T10:10:00.000Z', updatedAt: '3 天前' },
+  { id: 'kube-minikube', name: 'minikube', path: '~/.kube/minikube', groupId: 'kube-group-lab', context: 'minikube', contexts: ['minikube'], server: 'https://192.168.49.2:8443', tags: ['本地'], createdAt: '2026-10-16T04:45:00.000Z', updatedAt: '上周' },
 ]
 
 export const commandTemplates: CommandTemplate[] = [
-  { id: 'get-pods', name: '查看 Pods', command: 'get pods', description: '列出当前命名空间的 Pod' },
-  { id: 'get-pods-wide', name: '查看 Pods（详细）', command: 'get pods -o wide', description: '查看节点、IP 等详细信息' },
-  { id: 'get-nodes', name: '查看节点', command: 'get nodes -o wide', description: '查看集群节点和地址' },
-  { id: 'get-deployments', name: '查看 Deployment', command: 'get deployments', description: '列出工作负载部署' },
-  { id: 'describe-pod', name: '描述资源', command: 'describe pod', description: '查看资源事件和详细状态' },
-  { id: 'logs', name: '查看日志', command: 'logs -f', description: '跟随容器实时输出日志' },
+  { id: 'get-pods', name: '查看 Pods', command: 'get pods', description: '列出当前命名空间的 Pod', builtin: true, createdAt: now },
+  { id: 'get-pods-wide', name: '查看 Pods（详细）', command: 'get pods -o wide', description: '查看节点、IP 等详细信息', builtin: true, createdAt: now },
+  { id: 'get-pods-sort-created', name: 'Pods 按创建时间排序', command: 'get pods --sort-by=.metadata.creationTimestamp', description: '按照创建时间排序查看 Pod', builtin: true, createdAt: now },
+  { id: 'get-nodes', name: '查看节点', command: 'get nodes -o wide', description: '查看集群节点和地址', builtin: true, createdAt: now },
+  { id: 'get-services', name: '查看 Service', command: 'get svc -o wide', description: '查看服务和访问地址', builtin: true, createdAt: now },
+  { id: 'get-deployments', name: '查看 Deployment', command: 'get deployments', description: '列出工作负载部署', builtin: true, createdAt: now },
+  { id: 'rollout-status', name: '查看发布状态', command: 'rollout status deployment', description: '等待 Deployment 发布完成', builtin: true, createdAt: now },
+  { id: 'describe-pod', name: '描述资源', command: 'describe pod', description: '查看资源事件和详细状态', builtin: true, createdAt: now },
+  { id: 'get-events-sort-created', name: 'Events 按创建时间排序', command: 'get events --sort-by=.metadata.creationTimestamp', description: '按创建时间查看集群事件', builtin: true, createdAt: now },
+  { id: 'top-pods', name: 'Pod 资源排行', command: 'top pods', description: '查看 Pod CPU 和内存使用', builtin: true, createdAt: now },
+  { id: 'logs', name: '查看日志', command: 'logs -f', description: '跟随容器实时输出日志', builtin: true, createdAt: now },
 ]

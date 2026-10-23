@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Archive,
+  ArrowDownUp,
   ArrowUpRight,
   Blocks,
   Bookmark,
@@ -22,6 +23,7 @@ import {
   FolderOpen,
   GripVertical,
   HardDrive,
+  Info,
   KeyRound,
   Laptop,
   LayoutGrid,
@@ -29,11 +31,16 @@ import {
   ListFilter,
   MoreHorizontal,
   Plus,
+  Pencil,
   Search,
+  Save,
   Settings2,
   ShieldCheck,
   Sparkles,
+  Star,
   Sun,
+  SlidersHorizontal,
+  Server,
   Terminal,
   Trash2,
   X,
@@ -41,10 +48,11 @@ import {
   Moon,
 } from 'lucide-react'
 import { commandTemplates, initialBoards, initialKubeConfigs, initialKubeGroups } from './data'
-import type { BookmarkBoard, KubeConfig, KubeGroup } from './types'
+import type { BookmarkBoard, CommandTemplate, KubeConfig, KubeGroup } from './types'
 
 type Section = 'bookmarks' | 'kubeconfig' | 'settings'
 type Theme = 'dark' | 'light'
+type ConfigSort = 'created' | 'name'
 
 const uid = (prefix: string) => `${prefix}-${Math.random().toString(36).slice(2, 8)}-${Date.now().toString(36).slice(-4)}`
 
@@ -68,6 +76,9 @@ function App() {
   const [boards, setBoards] = usePersistentState<BookmarkBoard[]>('orbit-boards', initialBoards)
   const [kubeConfigs, setKubeConfigs] = usePersistentState<KubeConfig[]>('orbit-kube-configs', initialKubeConfigs)
   const [kubeGroups, setKubeGroups] = usePersistentState<KubeGroup[]>('orbit-kube-groups', initialKubeGroups)
+  const [kubeCommands, setKubeCommands] = usePersistentState<CommandTemplate[]>('orbit-kube-commands', commandTemplates)
+  const [defaultKubeConfigId, setDefaultKubeConfigId] = usePersistentState('orbit-default-kube-config', '')
+  const [defaultCommandId, setDefaultCommandId] = usePersistentState('orbit-default-kube-command', commandTemplates[0]?.id ?? '')
   const [theme, setTheme] = usePersistentState<Theme>('orbit-theme', 'dark')
   const [query, setQuery] = useState('')
   const [toast, setToast] = useState('')
@@ -83,6 +94,21 @@ function App() {
     document.documentElement.dataset.theme = theme
     document.documentElement.style.colorScheme = theme
   }, [theme])
+
+  useEffect(() => {
+    const seedById = new Map(initialKubeConfigs.map((config) => [config.id, config]))
+    setKubeConfigs((current) => {
+      let changed = false
+      const next = current.map((config) => {
+        const seed = seedById.get(config.id)
+        const contexts = config.contexts?.length ? config.contexts : seed?.contexts?.length ? seed.contexts : config.context ? [config.context] : []
+        const createdAt = config.createdAt ?? seed?.createdAt
+        if (contexts.length !== (config.contexts?.length ?? 0) || createdAt !== config.createdAt) changed = true
+        return changed ? { ...config, contexts, createdAt } : config
+      })
+      return changed ? next : current
+    })
+  }, [])
 
   const notify = (message: string) => setToast(message)
 
@@ -199,7 +225,7 @@ function App() {
             notify={notify}
           />
         )}
-        {section === 'kubeconfig' && <KubeconfigView configs={kubeConfigs} setConfigs={setKubeConfigs} groups={kubeGroups} setGroups={setKubeGroups} query={query} onCopy={copyText} notify={notify} />}
+        {section === 'kubeconfig' && <KubeconfigView configs={kubeConfigs} setConfigs={setKubeConfigs} groups={kubeGroups} setGroups={setKubeGroups} commands={kubeCommands} setCommands={setKubeCommands} defaultConfigId={defaultKubeConfigId} onDefaultConfigChange={setDefaultKubeConfigId} defaultCommandId={defaultCommandId} onDefaultCommandChange={setDefaultCommandId} query={query} onCopy={copyText} notify={notify} />}
         {section === 'settings' && <SettingsView boards={boards} configs={kubeConfigs} theme={theme} onThemeChange={setTheme} />}
       </main>
 
@@ -361,49 +387,94 @@ function LinkRow({ link, group, onCopy, onDelete, onDragStart }: { link: Bookmar
   </article>
 }
 
-function KubeconfigView({ configs, setConfigs, groups, setGroups, query, onCopy, notify }: { configs: KubeConfig[]; setConfigs: React.Dispatch<React.SetStateAction<KubeConfig[]>>; groups: KubeGroup[]; setGroups: React.Dispatch<React.SetStateAction<KubeGroup[]>>; query: string; onCopy: (value: string, label?: string) => void; notify: (message: string) => void }) {
-  const [selectedId, setSelectedId] = useState(configs[0]?.id ?? '')
+function KubeconfigView({ configs, setConfigs, groups, setGroups, commands, setCommands, defaultConfigId, onDefaultConfigChange, defaultCommandId, onDefaultCommandChange, query, onCopy, notify }: { configs: KubeConfig[]; setConfigs: React.Dispatch<React.SetStateAction<KubeConfig[]>>; groups: KubeGroup[]; setGroups: React.Dispatch<React.SetStateAction<KubeGroup[]>>; commands: CommandTemplate[]; setCommands: React.Dispatch<React.SetStateAction<CommandTemplate[]>>; defaultConfigId: string; onDefaultConfigChange: React.Dispatch<React.SetStateAction<string>>; defaultCommandId: string; onDefaultCommandChange: React.Dispatch<React.SetStateAction<string>>; query: string; onCopy: (value: string, label?: string) => void; notify: (message: string) => void }) {
+  const initialSelectedId = defaultConfigId && configs.some((config) => config.id === defaultConfigId) ? defaultConfigId : configs[0]?.id ?? ''
+  const [selectedId, setSelectedId] = useState(initialSelectedId)
   const [selectedGroup, setSelectedGroup] = useState('all')
-  const [templateId, setTemplateId] = useState(commandTemplates[0].id)
+  const [templateId, setTemplateId] = useState(defaultCommandId && commands.some((item) => item.id === defaultCommandId) ? defaultCommandId : commands[0]?.id ?? '')
+  const [context, setContext] = useState('')
   const [namespace, setNamespace] = useState('default')
   const [extraArgs, setExtraArgs] = useState('')
+  const [sortMode, setSortMode] = useState<ConfigSort>('created')
   const [showAdd, setShowAdd] = useState(false)
-  const [newConfig, setNewConfig] = useState({ name: '', path: '', groupId: groups[0]?.id ?? '' })
+  const [showGroupAdd, setShowGroupAdd] = useState(false)
+  const [showCommandManager, setShowCommandManager] = useState(false)
+  const [detailsId, setDetailsId] = useState<string | null>(null)
+  const [newConfig, setNewConfig] = useState({ name: '', path: '', groupId: groups[0]?.id ?? '', contexts: '', server: '', tags: '' })
+  const [newGroup, setNewGroup] = useState({ name: '', color: '#f2ab55' })
   const [draggedConfig, setDraggedConfig] = useState<string | null>(null)
   const selected = configs.find((config) => config.id === selectedId) ?? configs[0]
   const filteredConfigs = configs.filter((config) => {
-    const text = `${config.name} ${config.path} ${config.context} ${config.tags.join(' ')}`.toLowerCase()
+    const text = `${config.name} ${config.path} ${config.context} ${(config.contexts ?? []).join(' ')} ${config.server} ${config.tags.join(' ')}`.toLowerCase()
     return (selectedGroup === 'all' || config.groupId === selectedGroup) && (!query || text.includes(query.toLowerCase()))
   })
-  const template = commandTemplates.find((item) => item.id === templateId) ?? commandTemplates[0]
-  const generatedCommand = selected ? `META=${selected.path}\nKUBECONFIG=$META kubectl ${template.command}${namespace && namespace !== 'default' ? ` -n ${namespace}` : ''}${extraArgs ? ` ${extraArgs}` : ''}` : ''
+  const displayedConfigs = useMemo(() => [...filteredConfigs].sort((a, b) => {
+    if (sortMode === 'name') return a.name.localeCompare(b.name, 'zh-CN')
+    return (b.createdAt ? new Date(b.createdAt).getTime() : 0) - (a.createdAt ? new Date(a.createdAt).getTime() : 0)
+  }), [filteredConfigs, sortMode])
+  const template = commands.find((item) => item.id === templateId) ?? commands[0]
+  const contextOptions = selected ? Array.from(new Set([...(selected.contexts ?? []), selected.context].filter(Boolean))) : []
+  const generatedCommand = selected && template ? `META=${selected.path}\nKUBECONFIG=$META kubectl ${template.command}${namespace && namespace !== 'default' ? ` -n ${namespace}` : ''}${context ? ` --context ${context}` : ''}${extraArgs ? ` ${extraArgs}` : ''}` : ''
 
   useEffect(() => {
     if (!filteredConfigs.some((item) => item.id === selectedId)) setSelectedId(filteredConfigs[0]?.id ?? configs[0]?.id ?? '')
   }, [filteredConfigs, selectedId, configs])
 
+  useEffect(() => {
+    if (!selected) {
+      setContext('')
+      return
+    }
+    setContext(selected.context || selected.contexts?.[0] || '')
+  }, [selectedId])
+
+  useEffect(() => {
+    if (!commands.some((item) => item.id === templateId)) setTemplateId(defaultCommandId && commands.some((item) => item.id === defaultCommandId) ? defaultCommandId : commands[0]?.id ?? '')
+  }, [commands, defaultCommandId, templateId])
+
+  const updateConfig = (id: string, updater: (config: KubeConfig) => KubeConfig) => setConfigs((current) => current.map((item) => item.id === id ? updater(item) : item))
+  const parseList = (value: string) => Array.from(new Set(value.split(',').map((item) => item.trim()).filter(Boolean)))
+
   const addConfig = () => {
-    if (!newConfig.name.trim() || !newConfig.path.trim()) return
-    const item: KubeConfig = { id: uid('kube'), name: newConfig.name.trim(), path: newConfig.path.trim(), groupId: newConfig.groupId || groups[0]?.id, context: '未读取 context', server: '待检测', tags: ['新建'], updatedAt: '刚刚' }
+    if (!newConfig.name.trim() || !newConfig.path.trim()) {
+      notify('请填写配置名称和文件路径')
+      return
+    }
+    const contexts = parseList(newConfig.contexts)
+    const item: KubeConfig = { id: uid('kube'), name: newConfig.name.trim(), path: newConfig.path.trim(), groupId: newConfig.groupId || groups[0]?.id || '', context: contexts[0] || '未读取 context', contexts, server: newConfig.server.trim() || '待检测', tags: parseList(newConfig.tags), createdAt: new Date().toISOString(), updatedAt: '刚刚' }
     setConfigs((current) => [item, ...current])
     setSelectedId(item.id)
     setShowAdd(false)
-    setNewConfig({ name: '', path: '', groupId: groups[0]?.id ?? '' })
+    setNewConfig({ name: '', path: '', groupId: groups[0]?.id ?? '', contexts: '', server: '', tags: '' })
     notify('kubeconfig 已添加')
   }
 
   const addKubeGroup = () => {
-    const name = window.prompt('分组名称', '新环境')?.trim()
-    if (!name) return
-    setGroups((current) => [...current, { id: uid('kube-group'), name, color: '#f2ab55' }])
-    notify('分组已添加')
+    setNewGroup({ name: '', color: '#f2ab55' })
+    setShowGroupAdd(true)
+  }
+
+  const saveKubeGroup = () => {
+    const name = newGroup.name.trim()
+    if (!name) {
+      notify('请填写分组名称')
+      return
+    }
+    setGroups((current) => [...current, { id: uid('kube-group'), name, color: newGroup.color }])
+    setShowGroupAdd(false)
+    notify('分组已创建')
   }
 
   const moveConfig = (groupId: string) => {
     if (!draggedConfig) return
-    setConfigs((current) => current.map((item) => item.id === draggedConfig ? { ...item, groupId } : item))
+    updateConfig(draggedConfig, (item) => ({ ...item, groupId, updatedAt: '刚刚' }))
     setDraggedConfig(null)
     notify('配置已移动')
+  }
+
+  const changeContext = (value: string) => {
+    setContext(value)
+    if (selected) updateConfig(selected.id, (item) => ({ ...item, context: value, contexts: Array.from(new Set([...(item.contexts ?? []), value])) }))
   }
 
   const deleteConfig = () => {
@@ -412,19 +483,75 @@ function KubeconfigView({ configs, setConfigs, groups, setGroups, query, onCopy,
     const remaining = configs.filter((item) => item.id !== selected.id)
     setConfigs(remaining)
     setSelectedId(remaining[0]?.id ?? '')
+    if (defaultConfigId === selected.id) onDefaultConfigChange(remaining[0]?.id ?? '')
     notify('kubeconfig 已移除')
+  }
+
+  const setDefaultConfig = (id: string) => {
+    onDefaultConfigChange(id)
+    setSelectedId(id)
+    notify('默认配置已更新')
+  }
+
+  const saveDetails = (updated: KubeConfig) => {
+    updateConfig(updated.id, () => updated)
+    if (updated.id === selected?.id) setContext(updated.context)
+    notify('配置详情已保存')
   }
 
   return <div className="content-wrap kube-page">
     <div className="page-heading"><div><div className="eyebrow"><span className="eyebrow-dot green" />CLUSTER ACCESS</div><h1>Kubeconfig 管理</h1><p>把散落在不同目录的集群入口，整理成一组可复制的命令。</p></div><div className="heading-actions"><button className="ghost-button" onClick={addKubeGroup}><Plus size={16} />新建分组</button><button className="primary-button" onClick={() => setShowAdd(true)}><Plus size={16} />添加配置</button></div></div>
-    <div className="kube-summary"><div><div className="summary-icon blue"><Database size={18} /></div><div><strong>{configs.length}</strong><span>个配置文件</span></div></div><div><div className="summary-icon green"><ShieldCheck size={18} /></div><div><strong>{groups.length}</strong><span>个环境分组</span></div></div><div><div className="summary-icon orange"><Command size={18} /></div><div><strong>{commandTemplates.length}</strong><span>条常用命令</span></div></div><div className="summary-tip"><Sparkles size={16} /><span>选择配置后，命令会自动带上 KUBECONFIG</span></div></div>
+    <div className="kube-summary"><div><div className="summary-icon blue"><Database size={18} /></div><div><strong>{configs.length}</strong><span>个配置文件</span></div></div><div><div className="summary-icon green"><ShieldCheck size={18} /></div><div><strong>{groups.length}</strong><span>个环境分组</span></div></div><div><div className="summary-icon orange"><Command size={18} /></div><div><strong>{commands.length}</strong><span>条常用命令</span></div></div><div className="summary-tip"><Sparkles size={16} /><span>选择配置后，命令会自动带上 KUBECONFIG 和 Context</span></div></div>
     <div className="kube-grid">
-      <aside className="kube-groups panel"><div className="panel-title"><span>环境分组</span><button className="icon-button tiny" onClick={addKubeGroup}><Plus size={15} /></button></div><button className={`kube-group-item ${selectedGroup === 'all' ? 'active' : ''}`} onClick={() => setSelectedGroup('all')}><div className="group-icon"><HardDrive size={15} /></div><span>全部配置</span><b>{configs.length}</b></button>{groups.map((group) => <button className={`kube-group-item ${selectedGroup === group.id ? 'active' : ''}`} key={group.id} onClick={() => setSelectedGroup(group.id)} onDragOver={(event) => event.preventDefault()} onDrop={() => moveConfig(group.id)}><div className="group-icon" style={{ color: group.color, background: `${group.color}18` }}><Folder size={15} /></div><span>{group.name}</span><b>{configs.filter((config) => config.groupId === group.id).length}</b></button>)}<div className="group-drop-hint"><GripVertical size={14} />拖动配置到分组</div></aside>
-      <section className="config-list panel"><div className="panel-title"><span>配置文件 <b>{filteredConfigs.length}</b></span><button className="icon-button tiny"><ListFilter size={15} /></button></div>{filteredConfigs.map((config) => <button key={config.id} className={`config-row ${selected?.id === config.id ? 'active' : ''}`} onClick={() => setSelectedId(config.id)} draggable onDragStart={() => setDraggedConfig(config.id)}><div className="config-file-icon"><KeyRound size={17} /></div><div className="config-row-main"><strong>{config.name}</strong><span>{config.path}</span><div className="config-row-meta"><span className="context-pill">{config.context}</span>{config.tags.map((tag) => <em key={tag}>{tag}</em>)}</div></div><ChevronRight size={15} className="row-chevron" /></button>)}{!filteredConfigs.length && <div className="panel-empty"><Search size={22} /><p>没有找到匹配的配置</p></div>}<button className="add-config-row" onClick={() => setShowAdd(true)}><Plus size={15} />添加一个 kubeconfig</button></section>
-      <section className="command-panel panel"><div className="command-panel-header"><div><div className="panel-kicker"><Terminal size={14} />COMMAND BUILDER</div><h2>命令生成器</h2><p>选择命令后直接复制到终端。</p></div><div className="terminal-badge"><span />shell</div></div>{selected ? <><div className="selected-config"><div className="config-file-icon big"><KeyRound size={18} /></div><div><span>当前配置</span><strong>{selected.name}</strong><small>{selected.path}</small></div><button className="icon-button tiny" onClick={() => onCopy(selected.path, '路径已复制')} aria-label="复制配置路径"><Copy size={14} /></button><button className="icon-button tiny danger-hover" onClick={deleteConfig} aria-label="删除配置"><Trash2 size={14} /></button></div><div className="command-form"><label>常用命令<select value={templateId} onChange={(event) => setTemplateId(event.target.value)}>{commandTemplates.map((item) => <option value={item.id} key={item.id}>{item.name} · {item.command}</option>)}</select></label><div className="form-row"><label>命名空间<input value={namespace} onChange={(event) => setNamespace(event.target.value)} placeholder="default" /></label><label>附加参数<input value={extraArgs} onChange={(event) => setExtraArgs(event.target.value)} placeholder="例如 --watch" /></label></div></div><div className="command-preview"><div className="preview-header"><span>预览</span><button className="copy-command" onClick={() => onCopy(generatedCommand, '命令已复制')}><Copy size={14} />复制命令</button></div><pre><code>{generatedCommand.split('\n').map((line, index) => <span key={line}><i>{index === 0 ? 'export' : '$'}</i>{line}{index < generatedCommand.split('\n').length - 1 && '\n'}</span>)}</code></pre></div><div className="command-note"><ShieldCheck size={15} /><span>命令只在本地生成，不会执行或上传配置内容。</span></div></> : <div className="panel-empty"><KeyRound size={22} /><p>选择一个配置开始</p></div>}</section>
+      <aside className="kube-groups panel"><div className="panel-title"><span>环境分组</span><button className="icon-button tiny" onClick={addKubeGroup} aria-label="新建 kubeconfig 分组"><Plus size={15} /></button></div><button className={`kube-group-item ${selectedGroup === 'all' ? 'active' : ''}`} onClick={() => setSelectedGroup('all')}><div className="group-icon"><HardDrive size={15} /></div><span>全部配置</span><b>{configs.length}</b></button>{groups.map((group) => <button className={`kube-group-item ${selectedGroup === group.id ? 'active' : ''}`} key={group.id} onClick={() => setSelectedGroup(group.id)} onDragOver={(event) => event.preventDefault()} onDrop={() => moveConfig(group.id)}><div className="group-icon" style={{ color: group.color, background: `${group.color}18` }}><Folder size={15} /></div><span>{group.name}</span><b>{configs.filter((config) => config.groupId === group.id).length}</b></button>)}<button className="group-drop-hint" onClick={addKubeGroup}><Plus size={14} />新建分组</button></aside>
+      <section className="config-list panel"><div className="config-list-header"><div className="panel-title"><span>配置文件 <b>{filteredConfigs.length}</b></span><span className="config-list-hint">拖动可调整分组</span></div><label className="sort-control"><ArrowDownUp size={13} /><span>排序</span><select aria-label="配置排序" value={sortMode} onChange={(event) => setSortMode(event.target.value as ConfigSort)}><option value="created">创建时间</option><option value="name">名称</option></select></label></div>{displayedConfigs.map((config) => <div key={config.id} className={`config-row ${selected?.id === config.id ? 'active' : ''}`} role="button" tabIndex={0} onClick={() => setSelectedId(config.id)} onKeyDown={(event) => { if (event.key === 'Enter') setSelectedId(config.id) }} draggable onDragStart={() => setDraggedConfig(config.id)}><div className="config-file-icon"><KeyRound size={17} /></div><div className="config-row-main"><strong>{config.name}</strong><span>{config.path}</span><div className="config-row-meta"><span className="context-pill">{config.context}</span>{config.tags.slice(0, 2).map((tag) => <em key={tag}>{tag}</em>)}</div></div>{defaultConfigId === config.id && <span className="default-dot" title="默认配置"><Star size={12} fill="currentColor" /></span>}<button className="config-detail-button" onClick={(event) => { event.stopPropagation(); setDetailsId(config.id) }} aria-label={`查看 ${config.name} 详情`} title="查看配置详情"><Info size={14} /></button><ChevronRight size={15} className="row-chevron" /></div>)}{!displayedConfigs.length && <div className="panel-empty"><Search size={22} /><p>没有找到匹配的配置</p></div>}<button className="add-config-row" onClick={() => setShowAdd(true)}><Plus size={15} />添加一个 kubeconfig</button></section>
+      <section className="command-panel panel"><div className="command-panel-header"><div><div className="panel-kicker"><Terminal size={14} />COMMAND BUILDER</div><h2>命令生成器</h2><p>选择命令后直接复制到终端。</p></div><div className="terminal-badge"><span />shell</div></div>{selected ? <><div className="selected-config"><div className="config-file-icon big"><KeyRound size={18} /></div><div><span>当前配置{defaultConfigId === selected.id ? ' · 默认' : ''}</span><strong>{selected.name}</strong><small>{selected.path}</small></div><button className="icon-button tiny" onClick={() => setDetailsId(selected.id)} aria-label="查看配置详情" title="查看配置详情"><Info size={14} /></button><button className={`icon-button tiny ${defaultConfigId === selected.id ? 'is-default' : ''}`} onClick={() => setDefaultConfig(selected.id)} aria-label={defaultConfigId === selected.id ? '已是默认配置' : '设为默认配置'} title={defaultConfigId === selected.id ? '已是默认配置' : '设为默认配置'}><Star size={14} fill={defaultConfigId === selected.id ? 'currentColor' : 'none'} /></button><button className="icon-button tiny" onClick={() => onCopy(selected.path, '路径已复制')} aria-label="复制配置路径"><Copy size={14} /></button><button className="icon-button tiny danger-hover" onClick={deleteConfig} aria-label="删除配置"><Trash2 size={14} /></button></div><div className="default-config-bar"><label><span>默认配置</span><select aria-label="默认配置" value={defaultConfigId || selected.id} onChange={(event) => setDefaultConfig(event.target.value)}>{configs.map((config) => <option value={config.id} key={config.id}>{config.name}</option>)}</select></label><span>{defaultConfigId === selected.id ? '当前命令会优先使用此配置' : '可在这里指定启动时默认选中的配置'}</span></div><div className="command-form"><div className="command-label-row"><label htmlFor="command-template">常用命令</label><div><button className="inline-control" onClick={() => setShowCommandManager(true)}><SlidersHorizontal size={13} />管理命令</button><button className="inline-control" onClick={() => onDefaultCommandChange(templateId)}><Star size={13} fill={defaultCommandId === templateId ? 'currentColor' : 'none'} />{defaultCommandId === templateId ? '默认命令' : '设为默认'}</button></div></div><select id="command-template" aria-label="常用命令" value={templateId} onChange={(event) => setTemplateId(event.target.value)}>{commands.map((item) => <option value={item.id} key={item.id}>{item.name} · {item.command}</option>)}</select><div className="form-row"><label>Context<select aria-label="Context" value={context} onChange={(event) => changeContext(event.target.value)}>{contextOptions.length ? contextOptions.map((item) => <option value={item} key={item}>{item}</option>) : <option value="">未读取 context</option>}</select></label><label>命名空间<input value={namespace} onChange={(event) => setNamespace(event.target.value)} placeholder="default" /></label></div><label className="extra-args-field">附加参数<input value={extraArgs} onChange={(event) => setExtraArgs(event.target.value)} placeholder="例如 --watch 或 -l app=web" /></label></div><div className="command-preview"><div className="preview-header"><span>预览</span><button className="copy-command" onClick={() => onCopy(generatedCommand, '命令已复制')}><Copy size={14} />复制命令</button></div><pre><code>{generatedCommand.split('\n').map((line, index) => <span key={`${line}-${index}`}><i>{index === 0 ? 'export' : '$'}</i>{line}{index < generatedCommand.split('\n').length - 1 && '\n'}</span>)}</code></pre></div><div className="command-note"><ShieldCheck size={15} /><span>命令只在本地生成，不会执行或上传配置内容。</span></div></> : <div className="panel-empty"><KeyRound size={22} /><p>选择一个配置开始</p></div>}</section>
     </div>
-    {showAdd && <Modal title="添加 kubeconfig" onClose={() => setShowAdd(false)}><div className="form-stack"><label>配置名称<input autoFocus value={newConfig.name} onChange={(event) => setNewConfig((current) => ({ ...current, name: event.target.value }))} placeholder="例如：production" /></label><label>文件路径<input value={newConfig.path} onChange={(event) => setNewConfig((current) => ({ ...current, path: event.target.value }))} placeholder="~/.kube/config" /></label><label>所属分组<select value={newConfig.groupId || groups[0]?.id} onChange={(event) => setNewConfig((current) => ({ ...current, groupId: event.target.value }))}>{groups.map((group) => <option value={group.id} key={group.id}>{group.name}</option>)}</select></label><div className="modal-actions"><button className="ghost-button" onClick={() => setShowAdd(false)}>取消</button><button className="primary-button" onClick={addConfig}>保存配置</button></div></div></Modal>}
+    {showAdd && <Modal title="添加 kubeconfig" onClose={() => setShowAdd(false)}><div className="form-stack"><label>配置名称<input autoFocus value={newConfig.name} onChange={(event) => setNewConfig((current) => ({ ...current, name: event.target.value }))} placeholder="例如：production" /></label><label>文件路径<input value={newConfig.path} onChange={(event) => setNewConfig((current) => ({ ...current, path: event.target.value }))} placeholder="~/.kube/config" /></label><div className="form-row"><label>Context 列表<input value={newConfig.contexts} onChange={(event) => setNewConfig((current) => ({ ...current, contexts: event.target.value }))} placeholder="context-a, context-b" /></label><label>集群地址<input value={newConfig.server} onChange={(event) => setNewConfig((current) => ({ ...current, server: event.target.value }))} placeholder="https://..." /></label></div><label>标签<input value={newConfig.tags} onChange={(event) => setNewConfig((current) => ({ ...current, tags: event.target.value }))} placeholder="生产, 只读" /></label><label>所属分组<select value={newConfig.groupId || groups[0]?.id} onChange={(event) => setNewConfig((current) => ({ ...current, groupId: event.target.value }))}>{groups.map((group) => <option value={group.id} key={group.id}>{group.name}</option>)}</select></label><div className="modal-actions"><button className="ghost-button" onClick={() => setShowAdd(false)}>取消</button><button className="primary-button" onClick={addConfig}><Save size={14} />保存配置</button></div></div></Modal>}
+    {showGroupAdd && <Modal title="新建环境分组" onClose={() => setShowGroupAdd(false)}><div className="form-stack"><label>分组名称<input autoFocus value={newGroup.name} onChange={(event) => setNewGroup((current) => ({ ...current, name: event.target.value }))} placeholder="例如：生产集群" /></label><label>分组颜色<input className="color-input" type="color" value={newGroup.color} onChange={(event) => setNewGroup((current) => ({ ...current, color: event.target.value }))} /></label><div className="modal-actions"><button className="ghost-button" onClick={() => setShowGroupAdd(false)}>取消</button><button className="primary-button" onClick={saveKubeGroup}><Save size={14} />创建分组</button></div></div></Modal>}
+    {detailsId && configs.find((config) => config.id === detailsId) && <ConfigDetailModal config={configs.find((config) => config.id === detailsId)!} groups={groups} onClose={() => setDetailsId(null)} onSave={saveDetails} />}
+    {showCommandManager && <CommandManagerModal commands={commands} defaultCommandId={defaultCommandId} setCommands={setCommands} onDefaultCommandChange={onDefaultCommandChange} onClose={() => setShowCommandManager(false)} notify={notify} />}
   </div>
+}
+
+function ConfigDetailModal({ config, groups, onClose, onSave }: { config: KubeConfig; groups: KubeGroup[]; onClose: () => void; onSave: (config: KubeConfig) => void }) {
+  const [draft, setDraft] = useState({ name: config.name, path: config.path, groupId: config.groupId, context: config.context, contexts: (config.contexts ?? [config.context]).join(', '), server: config.server, tags: config.tags.join(', ') })
+  const parseList = (value: string) => Array.from(new Set(value.split(',').map((item) => item.trim()).filter(Boolean)))
+  const save = () => {
+    const contexts = parseList(draft.contexts)
+    const activeContext = draft.context.trim() || contexts[0] || '未读取 context'
+    onSave({ ...config, name: draft.name.trim() || config.name, path: draft.path.trim() || config.path, groupId: draft.groupId, context: activeContext, contexts: Array.from(new Set([activeContext, ...contexts])), server: draft.server.trim() || '待检测', tags: parseList(draft.tags), updatedAt: '刚刚' })
+    onClose()
+  }
+  const contextOptions = Array.from(new Set([draft.context, ...parseList(draft.contexts)].filter(Boolean)))
+  return <Modal title="kubeconfig 详情" onClose={onClose}><div className="form-stack"><div className="detail-kicker"><Server size={15} /><span>配置文件信息</span></div><label>配置名称<input autoFocus value={draft.name} onChange={(event) => setDraft((current) => ({ ...current, name: event.target.value }))} /></label><label>文件路径<input value={draft.path} onChange={(event) => setDraft((current) => ({ ...current, path: event.target.value }))} /></label><div className="form-row"><label>当前 Context<select value={draft.context} onChange={(event) => setDraft((current) => ({ ...current, context: event.target.value }))}>{contextOptions.map((item) => <option value={item} key={item}>{item}</option>)}{!contextOptions.length && <option value="">未读取 context</option>}</select></label><label>所属分组<select value={draft.groupId} onChange={(event) => setDraft((current) => ({ ...current, groupId: event.target.value }))}>{groups.map((group) => <option value={group.id} key={group.id}>{group.name}</option>)}</select></label></div><label>可用 Context（逗号分隔）<input value={draft.contexts} onChange={(event) => setDraft((current) => ({ ...current, contexts: event.target.value }))} placeholder="context-a, context-b" /></label><label>集群地址<input value={draft.server} onChange={(event) => setDraft((current) => ({ ...current, server: event.target.value }))} placeholder="https://..." /></label><label>标签（逗号分隔）<input value={draft.tags} onChange={(event) => setDraft((current) => ({ ...current, tags: event.target.value }))} placeholder="生产, 只读" /></label><div className="detail-meta"><span>创建时间</span><strong>{config.createdAt ? new Date(config.createdAt).toLocaleString('zh-CN') : '未记录'}</strong><span>最近更新</span><strong>{config.updatedAt}</strong></div><div className="modal-actions"><button className="ghost-button" onClick={onClose}>取消</button><button className="primary-button" onClick={save}><Save size={14} />保存详情</button></div></div></Modal>
+}
+
+function CommandManagerModal({ commands, defaultCommandId, setCommands, onDefaultCommandChange, onClose, notify }: { commands: CommandTemplate[]; defaultCommandId: string; setCommands: React.Dispatch<React.SetStateAction<CommandTemplate[]>>; onDefaultCommandChange: React.Dispatch<React.SetStateAction<string>>; onClose: () => void; notify: (message: string) => void }) {
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [draft, setDraft] = useState({ name: '', command: '', description: '' })
+  const startEdit = (item?: CommandTemplate) => {
+    setEditingId(item?.id ?? null)
+    setDraft({ name: item?.name ?? '', command: item?.command ?? '', description: item?.description ?? '' })
+  }
+  const save = () => {
+    if (!draft.name.trim() || !draft.command.trim()) {
+      notify('请填写命令名称和命令内容')
+      return
+    }
+    if (editingId) setCommands((current) => current.map((item) => item.id === editingId ? { ...item, name: draft.name.trim(), command: draft.command.trim(), description: draft.description.trim() } : item))
+    else setCommands((current) => [...current, { id: uid('command'), name: draft.name.trim(), command: draft.command.trim(), description: draft.description.trim() || '自定义命令', createdAt: new Date().toISOString() }])
+    setEditingId(null)
+    setDraft({ name: '', command: '', description: '' })
+    notify(editingId ? '命令已更新' : '命令已添加')
+  }
+  const remove = (item: CommandTemplate) => {
+    if (item.builtin) return
+    setCommands((current) => current.filter((command) => command.id !== item.id))
+    if (defaultCommandId === item.id) onDefaultCommandChange(commands.find((command) => command.id !== item.id)?.id ?? '')
+    notify('自定义命令已删除')
+  }
+  return <Modal title="管理常用命令" onClose={onClose}><div className="command-manager"><div className="command-manager-list">{commands.map((item) => <div className="command-manager-row" key={item.id}><div className="command-manager-main"><strong>{item.name}</strong><code>{item.command}</code><small>{item.description}</small></div><div className="command-manager-actions"><button className={`command-default-button ${defaultCommandId === item.id ? 'active' : ''}`} onClick={() => onDefaultCommandChange(item.id)}>{defaultCommandId === item.id ? '默认' : '设为默认'}</button><button className="icon-button tiny" onClick={() => startEdit(item)} aria-label={`编辑 ${item.name}`}><Pencil size={13} /></button>{!item.builtin && <button className="icon-button tiny danger-hover" onClick={() => remove(item)} aria-label={`删除 ${item.name}`}><Trash2 size={13} /></button>}</div></div>)}</div><div className="command-manager-form"><div className="command-manager-form-header"><strong>{editingId ? '编辑命令' : '添加自定义命令'}</strong>{editingId && <button className="inline-control" onClick={() => startEdit()}><Plus size={13} />新建</button>}</div><div className="form-row"><label>名称<input value={draft.name} onChange={(event) => setDraft((current) => ({ ...current, name: event.target.value }))} placeholder="例如：Pod 按创建时间排序" /></label><label>命令<input value={draft.command} onChange={(event) => setDraft((current) => ({ ...current, command: event.target.value }))} placeholder="get pods --sort-by=.metadata.creationTimestamp" /></label></div><label>说明<input value={draft.description} onChange={(event) => setDraft((current) => ({ ...current, description: event.target.value }))} placeholder="说明这条命令的用途" /></label><button className="primary-button manager-save-button" onClick={save}><Save size={14} />{editingId ? '保存修改' : '添加命令'}</button></div></div></Modal>
 }
 
 function SettingsView({ boards, configs, theme, onThemeChange }: { boards: BookmarkBoard[]; configs: KubeConfig[]; theme: Theme; onThemeChange: React.Dispatch<React.SetStateAction<Theme>> }) {
