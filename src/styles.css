@@ -60,7 +60,8 @@ a { color: inherit; text-decoration: none; }
 .crumbs strong { color: #bcc5d4; font-weight: 600; }
 .topbar-actions { display: flex; align-items: center; gap: 10px; }
 .global-search { width: min(315px, 35vw); height: 34px; display: flex; gap: 8px; align-items: center; padding: 0 9px 0 11px; border: 1px solid var(--line); background: #121822; border-radius: 7px; color: var(--faint); }
-.global-search input { min-width: 0; flex: 1; border: 0; outline: 0; background: transparent; color: var(--text); font-size: 11px; }
+.global-search input { min-width: 0; flex: 1; width: auto; height: 100%; margin: 0; padding: 0; border: 0; outline: 0; background: transparent; color: var(--text); font-size: 11px; line-height: 1; }
+.global-search button, .global-search kbd { flex: 0 0 auto; }
 .global-search input::placeholder { color: #667284; }
 kbd { border: 1px solid #303b4a; border-radius: 4px; background: #1a222e; padding: 3px 5px; color: #7f8a9b; font-size: 9px; white-space: nowrap; }
 .icon-button { width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 6px; background: transparent; color: var(--muted); transition: background .18s, color .18s; }
@@ -205,6 +206,11 @@ h1, h2, h3, p { margin: 0; }
 .kube-groups { border-right: 1px solid var(--line-soft); background: #111720; }
 .kube-group-item { width: 100%; display: flex; align-items: center; gap: 8px; height: 38px; margin-top: 5px; padding: 0 8px; border-radius: 6px; background: transparent; color: #8794a7; text-align: left; font-size: 10px; }
 .kube-group-item:hover, .kube-group-item.active { background: rgba(111,140,255,.12); color: #c2ccff; }
+.kube-groups.is-dragging .kube-group-item { border: 1px dashed #4c5f88; background: rgba(111,140,255,.04); color: #a4b1d3; }
+.kube-groups.is-dragging .kube-group-item.drop-target { border-color: var(--blue); background: rgba(111,140,255,.2); color: #e0e5ff; box-shadow: inset 0 0 0 1px rgba(143,160,255,.3), 0 0 0 2px rgba(111,140,255,.12); }
+.kube-group-item span { min-width: 0; }
+.kube-group-item span small { display: block; margin-top: 2px; color: #9aaaff; font-size: 7px; font-weight: 500; }
+.group-drop-banner { display: flex; align-items: center; gap: 5px; margin: 9px 4px 5px; padding: 7px 8px; border: 1px solid rgba(111,140,255,.35); border-radius: 5px; background: rgba(111,140,255,.1); color: #9eafff; font-size: 8px; }
 .kube-group-item span { flex: 1; }
 .kube-group-item b { color: #5e6d81; font-size: 9px; font-weight: 500; }
 .group-icon { width: 25px; height: 25px; display: grid; place-items: center; border-radius: 6px; background: #1f2934; color: #8190a5; }
@@ -213,6 +219,7 @@ h1, h2, h3, p { margin: 0; }
 .config-row { width: 100%; display: flex; align-items: center; gap: 9px; min-height: 70px; margin-top: 6px; padding: 8px 7px; border: 1px solid transparent; border-radius: 7px; background: transparent; text-align: left; }
 .config-row:hover { background: #18222c; }
 .config-row.active { border-color: #35446b; background: rgba(111,140,255,.1); }
+.config-row.dragging { opacity: .45; border-style: dashed; }
 .config-file-icon { width: 31px; height: 31px; display: grid; flex: 0 0 auto; place-items: center; border-radius: 7px; background: #222d40; color: #9babff; }
 .config-row-main { min-width: 0; flex: 1; }
 .config-row-main strong, .config-row-main > span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -220,6 +227,7 @@ h1, h2, h3, p { margin: 0; }
 .config-row-main > span { margin-top: 4px; color: #667488; font-family: 'DM Mono', monospace; font-size: 8px; }
 .config-row-meta { display: flex; align-items: center; gap: 4px; margin-top: 6px; overflow: hidden; }
 .context-pill { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 130px; color: #6f9b93; font-family: 'DM Mono', monospace; font-size: 8px; }
+.config-alias-pill { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 110px; color: #8b9bcb; font-size: 8px; }
 .config-row-meta em { padding: 2px 4px; border-radius: 3px; background: #26313b; color: #8490a1; font-size: 8px; font-style: normal; }
 .row-chevron { color: #536174; }
 .add-config-row { width: 100%; display: flex; justify-content: center; align-items: center; gap: 6px; margin-top: 14px; padding: 8px; color: #7183db; background: transparent; border: 1px dashed #35405a; border-radius: 5px; font-size: 9px; }
@@ -235,10 +243,14 @@ h1, h2, h3, p { margin: 0; }
 .selected-config { display: flex; align-items: center; gap: 9px; margin-top: 24px; padding: 11px; border: 1px solid #2b3b55; border-radius: 7px; background: #141f2c; }
 .config-file-icon.big { width: 33px; height: 33px; }
 .selected-config > div:nth-child(2) { min-width: 0; flex: 1; }
+.selected-config-main { min-width: 0; flex: 1; }
 .selected-config span, .selected-config strong, .selected-config small { display: block; }
 .selected-config span { color: #7889a3; font-size: 8px; }
 .selected-config strong { margin-top: 3px; color: #d9e1ee; font-size: 11px; }
 .selected-config small { margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #7690a4; font-family: 'DM Mono', monospace; font-size: 8px; }
+.selected-alias { display: flex; align-items: center; gap: 6px; margin-top: 7px; color: #7889a3; font-size: 8px; }
+.selected-alias span { flex: 0 0 auto; margin: 0; }
+.selected-alias input { width: min(190px, 100%); height: 25px; margin: 0; padding: 0 7px; border-color: #344663; background: #101a25; color: #bfcaff; font-size: 9px; }
 .command-form { margin-top: 22px; }
 .command-form label, .form-stack label { display: block; color: #8996a8; font-size: 9px; }
 select, input, textarea { width: 100%; height: 34px; margin-top: 7px; padding: 0 9px; border: 1px solid #303c4c; border-radius: 5px; outline: 0; background: #141c25; color: #ccd6e6; font-size: 10px; }
@@ -250,8 +262,9 @@ select:focus, input:focus, textarea:focus { border-color: #647ce9; }
 .copy-command { display: inline-flex; align-items: center; gap: 5px; padding: 5px 6px; border-radius: 4px; background: transparent; color: #6fc2a9; font-family: 'Manrope', sans-serif; font-size: 9px; }
 .copy-command:hover { background: #1b2a29; color: #a3e4d0; }
 pre { margin: 0; padding: 13px 12px; overflow-x: auto; color: #a3d5c6; font: 10px/1.8 'DM Mono', monospace; }
-pre code i { display: inline-block; width: 36px; color: #5b8478; font-style: normal; user-select: none; }
-pre code span { white-space: pre; }
+pre code .command-line { display: flex; align-items: baseline; min-width: max-content; white-space: pre; }
+pre code .command-line i { flex: 0 0 44px; margin-right: 12px; color: #5b8478; font-style: normal; text-align: right; user-select: none; }
+pre code .command-line b { color: inherit; font-weight: 500; }
 .command-note { display: flex; align-items: center; gap: 6px; margin-top: 13px; color: #668d84; font-size: 9px; }
 .command-note svg { color: #54b99c; }
 
@@ -418,6 +431,12 @@ pre code span { white-space: pre; }
 .app-shell[data-theme='light'] .selected-config span { color: #7e8da2; }
 .app-shell[data-theme='light'] .selected-config strong { color: #39485d; }
 .app-shell[data-theme='light'] .selected-config small { color: #6e8790; }
+.app-shell[data-theme='light'] .selected-alias input { border-color: #cbd6ea; background: #ffffff; color: #5268c7; }
+.app-shell[data-theme='light'] .config-alias-pill { color: #6578bd; }
+.app-shell[data-theme='light'] .kube-groups.is-dragging .kube-group-item { border-color: #c6d1e5; background: #f7f9fd; color: #657590; }
+.app-shell[data-theme='light'] .kube-groups.is-dragging .kube-group-item.drop-target { border-color: #7184e0; background: #eef2ff; color: #4e62be; box-shadow: inset 0 0 0 1px #c6d1f0, 0 0 0 2px rgba(111,140,255,.12); }
+.app-shell[data-theme='light'] .kube-group-item span small { color: #5268c7; }
+.app-shell[data-theme='light'] .group-drop-banner { border-color: #c6d1f0; background: #eef2ff; color: #5268c7; }
 .app-shell[data-theme='light'] .command-form label,
 .app-shell[data-theme='light'] .form-stack label { color: #718098; }
 .app-shell[data-theme='light'] select,
@@ -511,13 +530,6 @@ pre code span { white-space: pre; }
 .config-detail-button { width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; border-radius: 5px; background: transparent; color: var(--faint); opacity: 0; }
 .config-row:hover .config-detail-button, .config-row:focus-within .config-detail-button { opacity: 1; }
 .config-detail-button:hover { background: var(--panel-3); color: var(--blue-soft); }
-.default-dot { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; color: var(--orange); }
-.selected-config .is-default { color: var(--orange); }
-.default-config-bar { display: flex; align-items: flex-end; gap: 12px; margin-top: 13px; padding: 10px 11px; border: 1px solid var(--line-soft); border-radius: 7px; background: var(--panel-2); }
-.default-config-bar label { min-width: 150px; flex: 0 0 42%; color: var(--muted); font-size: 9px; }
-.default-config-bar label span { display: block; }
-.default-config-bar select { height: 29px; margin-top: 5px; }
-.default-config-bar > span { padding-bottom: 7px; color: var(--faint); font-size: 8px; }
 .command-label-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .command-label-row > label { color: #8996a8; }
 .command-label-row > div { display: flex; align-items: center; gap: 3px; }
@@ -576,8 +588,6 @@ pre code span { white-space: pre; }
 .app-shell[data-theme='light'] .config-list-hint { color: #9aa7b8; }
 .app-shell[data-theme='light'] .sort-control select { border-color: #d1dbe8; background: #ffffff; color: #64748a; }
 .app-shell[data-theme='light'] .config-detail-button:hover { background: #eef2f8; color: #5369c9; }
-.app-shell[data-theme='light'] .default-config-bar { background: #f8fafc; }
-.app-shell[data-theme='light'] .default-config-bar > span { color: #8492a5; }
 .app-shell[data-theme='light'] .command-label-row > label { color: #718098; }
 .app-shell[data-theme='light'] .command-manager-form { background: #f8fafc; }
 .app-shell[data-theme='light'] select,

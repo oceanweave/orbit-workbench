@@ -33,6 +33,7 @@ export type KubeGroup = {
 export type KubeConfig = {
   id: string
   name: string
+  alias?: string
   path: string
   metaName?: string
   source?: 'file' | 'directory' | 'clipboard' | 'managed'

@@ -4,7 +4,7 @@
 
 - **React + TypeScript + Vite**：负责页面、交互和构建。
 - **Electron**：负责 macOS 桌面窗口、外部链接打开和应用打包。
-- **localStorage**：当前用于保存看板、Kubeconfig、命令模板、默认配置和主题偏好。
+- **localStorage**：当前用于保存看板、Kubeconfig、命令模板和主题偏好。
 - **lucide-react**：提供统一的界面图标。
 
 应用目前采用本地优先模型：Kubeconfig 内容只在用户主动选择、粘贴或编辑时读取并保存在本机，不会上传或执行；桌面端仅按用户操作写回指定文件。
@@ -41,24 +41,23 @@
 | `orbit-kube-configs` | Kubeconfig 元数据和当前编辑内容 |
 | `orbit-kube-groups` | Kubeconfig 环境分组 |
 | `orbit-kube-commands` | 内置和自定义命令模板 |
-| `orbit-default-kube-config` | 默认 Kubeconfig ID |
 | `orbit-default-kube-command` | 默认命令模板 ID |
 | `orbit-theme` | 亮色或暗色主题 |
 
-应用启动时会对旧版本 Kubeconfig 数据做一次轻量迁移，为缺少的 `contexts` 和 `createdAt` 字段补齐默认值。
+应用启动时会对旧版本 Kubeconfig 数据做一次轻量迁移，为缺少的 `contexts`、`createdAt` 和 `alias` 字段补齐默认值。
 
-Kubeconfig 记录还包含 `metaName`、来源类型和原始 YAML 文本。桌面版通过 `electron/preload.cjs` 暴露受限的文件选择、读取和写回 API；渲染层不会直接访问 Node.js 或 `ipcRenderer`。文件选择不按扩展名限制，兼容无后缀、`.yaml`、`.yml`、`.config`、`.conf` 和 `.txt` 等常见命名；写入路径支持 `~/`，由主进程展开到当前用户主目录。
+Kubeconfig 记录还包含用户可编辑的 `alias`（配置别名）、内部生成的 `metaName`、来源类型和原始 YAML 文本。桌面版通过 `electron/preload.cjs` 暴露受限的文件选择、读取和写回 API；渲染层不会直接访问 Node.js 或 `ipcRenderer`。文件选择不按扩展名限制，兼容无后缀、`.yaml`、`.yml`、`.config`、`.conf` 和 `.txt` 等常见命名；写入路径支持 `~/`，由主进程展开到当前用户主目录。
 
 ## 命令生成规则
 
 命令生成器只拼接文本，不执行 shell 命令。生成结果由以下部分组成：
 
 ```text
-META=<kubeconfig.path>
-KUBECONFIG=$META kubectl <template.command> [-n <namespace>] [--context <context>] [extraArgs]
+META_<ALIAS>=<kubeconfig.path>
+KUBECONFIG=$META_<ALIAS> kubectl <template.command> [-n <namespace>] [--context <context>] [extraArgs]
 ```
 
-每个配置有独立的 META 变量名，例如 `META_PRODUCTION`、`META_KIND`。变量名会校验为合法的 shell 标识符，路径中包含空格或特殊字符时会自动使用安全的单引号包裹。
+每个配置有独立的配置别名，例如 `production`、`kind`；命令生成时会把别名转换为合法的 `META_*` shell 变量，路径中包含空格或特殊字符时会自动使用安全的单引号包裹。
 
 这样既能复制完整命令，也能避免应用直接访问集群凭据。将来增加原生文件解析时，应继续保持“展示和复制默认安全，执行需要明确的独立入口”的边界。
 
