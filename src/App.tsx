@@ -67,6 +67,39 @@ const deriveEnvName = (value: string, fallback = 'KUBECONFIG') => {
 
 const quoteShellValue = (value: string) => /^[A-Za-z0-9_./~:@-]+$/.test(value) ? value : `'${value.replace(/'/g, `'\\''`)}'`
 
+const safeDownloadName = (value: string) => value.trim().replace(/[\\/:*?"<>|]+/g, '-').replace(/\s+/g, ' ').slice(0, 80) || 'orbit-bookmarks'
+
+const escapeHtml = (value: string) => value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+
+const bookmarkTimestamp = (value?: string) => {
+  const timestamp = value ? Math.floor(new Date(value).getTime() / 1000) : 0
+  return Number.isFinite(timestamp) && timestamp > 0 ? String(timestamp) : ''
+}
+
+const createBrowserBookmarksHtml = (boards: BookmarkBoard[]) => {
+  const folder = (name: string, groups: BookmarkBoard['groups'], links: BookmarkBoard['links'], timestamp?: string) => {
+    const date = bookmarkTimestamp(timestamp)
+    const dateAttribute = date ? ` ADD_DATE="${date}"` : ''
+    const groupMarkup = groups.map((group) => {
+      const groupLinks = links.filter((link) => link.groupId === group.id)
+      const groupDate = bookmarkTimestamp(groupLinks[0]?.addedAt)
+      const groupDateAttribute = groupDate ? ` ADD_DATE="${groupDate}"` : ''
+      const linksMarkup = groupLinks.map((link) => {
+        const linkDate = bookmarkTimestamp(link.addedAt)
+        const linkDateAttribute = linkDate ? ` ADD_DATE="${linkDate}"` : ''
+        return `<DT><A HREF="${escapeHtml(link.url)}"${linkDateAttribute}>${escapeHtml(link.title || link.url)}</A>`
+      }).join('\n')
+      return `<DT><H3${groupDateAttribute}>${escapeHtml(group.name)}</H3>\n<DL><p>\n${linksMarkup}\n</DL><p>`
+    }).join('\n')
+    const ungrouped = links.filter((link) => !groups.some((group) => group.id === link.groupId))
+    const ungroupedMarkup = ungrouped.length ? `<DT><H3>未分组</H3>\n<DL><p>\n${ungrouped.map((link) => `<DT><A HREF="${escapeHtml(link.url)}">${escapeHtml(link.title || link.url)}</A>`).join('\n')}\n</DL><p>` : ''
+    return `<DT><H3${dateAttribute}>${escapeHtml(name)}</H3>\n<DL><p>\n${groupMarkup}${ungroupedMarkup}\n</DL><p>`
+  }
+
+  const body = boards.map((board) => folder(board.name, board.groups, board.links, board.updatedAt)).join('\n')
+  return `<!DOCTYPE NETSCAPE-Bookmark-file-1>\n<!-- This is an automatically generated Orbit Workbench bookmark export. -->\n<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=UTF-8">\n<TITLE>Orbit Workbench Bookmarks</TITLE>\n<H1>Orbit Workbench Bookmarks</H1>\n<DL><p>\n${body}\n</DL><p>\n`
+}
+
 const displayEnvName = (config: KubeConfig) => deriveEnvName(config.envName || config.alias || config.metaName?.replace(/^META_/i, '') || config.name || filenameStem(config.path))
 
 const parseKubeconfigContent = (content: string) => {
@@ -196,11 +229,14 @@ function App() {
   }
 
   const exportBoard = (board: BookmarkBoard) => {
-    const payload = JSON.stringify(board, null, 2)
-    exportFile(`${board.name}.orbit.json`, payload, 'application/json')
+    exportFile(`${safeDownloadName(board.name)}.html`, createBrowserBookmarksHtml([board]), 'text/html;charset=utf-8')
   }
 
   const exportWorkspace = () => {
+    exportFile('orbit-bookmarks.html', createBrowserBookmarksHtml(boards), 'text/html;charset=utf-8')
+  }
+
+  const exportWorkspaceBackup = () => {
     const payload = JSON.stringify({ version: 1, exportedAt: new Date().toISOString(), boards, kubeGroups, kubeConfigs }, null, 2)
     exportFile('orbit-workbench.backup.json', payload, 'application/json')
   }
@@ -285,6 +321,7 @@ function App() {
             onImport={() => importRef.current?.click()}
             onExport={(board) => exportBoard(board)}
             onExportAll={exportWorkspace}
+            onExportBackup={exportWorkspaceBackup}
             onCopy={copyText}
             notify={notify}
           />
@@ -308,7 +345,7 @@ function NavItem({ icon, label, active, onClick, soon }: { icon: React.ReactNode
   return <button className={`nav-item ${active ? 'active' : ''}`} onClick={onClick}>{icon}<span>{label}</span>{soon && <em>Soon</em>}</button>
 }
 
-function BookmarksView({ boards, setBoards, query, addBoard, onImport, onExport, onExportAll, onCopy, notify }: {
+function BookmarksView({ boards, setBoards, query, addBoard, onImport, onExport, onExportAll, onExportBackup, onCopy, notify }: {
   boards: BookmarkBoard[]
   setBoards: React.Dispatch<React.SetStateAction<BookmarkBoard[]>>
   query: string
@@ -316,6 +353,7 @@ function BookmarksView({ boards, setBoards, query, addBoard, onImport, onExport,
   onImport: () => void
   onExport: (board: BookmarkBoard) => void
   onExportAll: () => void
+  onExportBackup: () => void
   onCopy: (value: string, label?: string) => void
   notify: (message: string) => void
 }) {
@@ -450,7 +488,7 @@ function BookmarksView({ boards, setBoards, query, addBoard, onImport, onExport,
   return <div className="content-wrap">
     <div className="page-heading">
       <div><div className="eyebrow"><span className="eyebrow-dot" />COLLECTIONS</div><h1>书签看板</h1><p>把浏览器里散落的链接，整理成可以快速行动的工作台。</p></div>
-      <div className="heading-actions"><button className="ghost-button" onClick={onImport}><FileUp size={16} />导入书签</button><button className="ghost-button" onClick={() => { setNewLink({ title: '', url: '', groupId: board.groups[0]?.id ?? '' }); setShowQuickAdd(true) }}><Link2 size={15} />添加链接</button><button className="ghost-button" onClick={() => board && onExport(board)}><FileDown size={16} />导出当前</button><button className="ghost-button" onClick={onExportAll}><Archive size={15} />导出全部</button><button className="primary-button" onClick={openBoardAdd}><Plus size={16} />新建看板</button></div>
+      <div className="heading-actions"><button className="ghost-button" onClick={onImport}><FileUp size={16} />导入书签</button><button className="ghost-button" onClick={() => { setNewLink({ title: '', url: '', groupId: board.groups[0]?.id ?? '' }); setShowQuickAdd(true) }}><Link2 size={15} />添加链接</button><button className="ghost-button" onClick={() => board && onExport(board)} title="导出为浏览器可导入的 HTML"><FileDown size={16} />导出当前</button><button className="ghost-button" onClick={onExportAll} title="把所有看板导出为浏览器可导入的 HTML"><Archive size={15} />导出全部</button><button className="ghost-button" onClick={onExportBackup} title="导出 Orbit Workbench JSON 备份"><CloudDownload size={15} />备份 JSON</button><button className="primary-button" onClick={openBoardAdd}><Plus size={16} />新建看板</button></div>
     </div>
 
     <div className="workspace-grid">
