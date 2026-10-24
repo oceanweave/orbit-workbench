@@ -173,6 +173,11 @@ function App() {
     const handlePointerDown = (event: PointerEvent) => {
       if (event.clientX <= 0 && event.clientY <= 0) return
       lastPointerRef.current = { x: event.clientX, y: event.clientY }
+      const target = event.target
+      const activeDetails = target instanceof Element ? target.closest<HTMLDetailsElement>('details.tag-filter-dropdown, details.config-tag-filter') : null
+      document.querySelectorAll<HTMLDetailsElement>('details.tag-filter-dropdown[open], details.config-tag-filter[open]').forEach((details) => {
+        if (details !== activeDetails) details.removeAttribute('open')
+      })
     }
     window.addEventListener('pointerdown', handlePointerDown, true)
     return () => window.removeEventListener('pointerdown', handlePointerDown, true)
