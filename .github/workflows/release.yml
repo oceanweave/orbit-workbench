@@ -1,0 +1,77 @@
+name: Release desktop packages
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-macos:
+    runs-on: macos-14
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Build macOS DMG
+        run: npm run app:dmg
+      - name: Upload macOS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: orbit-workbench-macos
+          path: release/Orbit-Workbench-*.dmg
+          if-no-files-found: error
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Build Windows packages
+        run: npm run app:win
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: orbit-workbench-windows
+          path: |
+            release/Orbit-Workbench-*.exe
+            release/Orbit-Workbench-*.zip
+          if-no-files-found: error
+
+  publish:
+    needs: [build-macos, build-windows]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download macOS artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: orbit-workbench-macos
+          path: release
+      - name: Download Windows artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: orbit-workbench-windows
+          path: release
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            release/Orbit-Workbench-*.dmg
+            release/Orbit-Workbench-*.exe
+            release/Orbit-Workbench-*.zip
