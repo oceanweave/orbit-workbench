@@ -48,7 +48,7 @@ import {
   Moon,
 } from 'lucide-react'
 import { commandTemplates, initialBoards, initialKubeConfigs, initialKubeGroups } from './data'
-import type { BookmarkBoard, CommandTemplate, KubeConfig, KubeGroup } from './types'
+import type { BookmarkBoard, BookmarkGroup, CommandTemplate, KubeConfig, KubeGroup, LinkItem } from './types'
 
 type Section = 'bookmarks' | 'kubeconfig' | 'settings'
 type Theme = 'dark' | 'light'
@@ -56,6 +56,18 @@ type Density = 'comfortable' | 'compact'
 type ConfigSort = 'created' | 'name'
 type KubeSource = 'file' | 'directory' | 'clipboard'
 type TagEditMode = 'replace' | 'add' | 'remove'
+type GlobalSearchTab = 'all' | 'bookmarks' | 'kubeconfig'
+
+type GlobalBookmarkResult = {
+  board: BookmarkBoard
+  group?: BookmarkGroup
+  link: LinkItem
+}
+
+type GlobalKubeResult = {
+  config: KubeConfig
+  group?: KubeGroup
+}
 
 // Browsers report the Enter key while an IME is still composing (for example
 // the first Enter that confirms a Chinese Pinyin candidate). Never treat that
@@ -148,6 +160,7 @@ function App() {
   const [theme, setTheme] = usePersistentState<Theme>('orbit-theme', 'dark')
   const [density, setDensity] = usePersistentState<Density>('orbit-density', 'comfortable')
   const [query, setQuery] = useState('')
+  const [globalSearchOpen, setGlobalSearchOpen] = useState(false)
   const [toast, setToast] = useState('')
   const [showHelp, setShowHelp] = useState(false)
   const importRef = useRef<HTMLInputElement>(null)
@@ -313,13 +326,13 @@ function App() {
         </div>
 
         <nav className="primary-nav" aria-label="主导航">
-          <NavItem icon={<Bookmark size={17} />} label="书签看板" active={section === 'bookmarks'} onClick={() => setSection('bookmarks')} />
-          <NavItem icon={<Box size={17} />} label="Kubeconfig" active={section === 'kubeconfig'} onClick={() => setSection('kubeconfig')} />
+          <NavItem icon={<Bookmark size={17} />} label="书签看板" active={section === 'bookmarks'} onClick={() => { setGlobalSearchOpen(false); setQuery(''); setSection('bookmarks') }} />
+          <NavItem icon={<Box size={17} />} label="Kubeconfig" active={section === 'kubeconfig'} onClick={() => { setGlobalSearchOpen(false); setQuery(''); setSection('kubeconfig') }} />
         </nav>
 
         <div className="rail-divider" />
         <nav className="secondary-nav" aria-label="辅助导航">
-          <NavItem icon={<Settings2 size={17} />} label="偏好设置" active={section === 'settings'} onClick={() => setSection('settings')} />
+          <NavItem icon={<Settings2 size={17} />} label="偏好设置" active={section === 'settings'} onClick={() => { setGlobalSearchOpen(false); setQuery(''); setSection('settings') }} />
         </nav>
 
         <div className="rail-footer">
@@ -331,12 +344,12 @@ function App() {
 
       <main className="main-area">
         <header className="topbar">
-          <div className="crumbs"><span>工作空间</span><ChevronRight size={14} /><strong>{section === 'bookmarks' ? '书签看板' : section === 'kubeconfig' ? 'Kubeconfig' : '偏好设置'}</strong></div>
+          <div className="crumbs"><span>工作空间</span><ChevronRight size={14} /><strong>{globalSearchOpen ? '搜索结果' : section === 'bookmarks' ? '书签看板' : section === 'kubeconfig' ? 'Kubeconfig' : '偏好设置'}</strong></div>
           <div className="topbar-actions">
             <label className="global-search">
               <Search size={16} />
-              <input ref={searchRef} value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索链接、配置、标签…" />
-              {query && <button className="icon-button tiny" onClick={() => setQuery('')} aria-label="清空搜索"><X size={13} /></button>}
+              <input ref={searchRef} value={query} onChange={(event) => setQuery(event.target.value)} onKeyDown={(event) => { if (isCommittedEnter(event) && query.trim()) { event.preventDefault(); setGlobalSearchOpen(true) } if (event.key === 'Escape') { setGlobalSearchOpen(false); setQuery('') } }} placeholder="搜索所有看板、配置、标签…" aria-label="搜索所有看板、配置、标签" />
+              {query && <button className="icon-button tiny" onClick={() => { setQuery(''); setGlobalSearchOpen(false) }} aria-label="清空搜索"><X size={13} /></button>}
               <kbd>⌘ K</kbd>
             </label>
             <button className="icon-button theme-toggle" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} aria-label={theme === 'dark' ? '切换到亮色主题' : '切换到暗色主题'} title={theme === 'dark' ? '切换到亮色主题' : '切换到暗色主题'}>
@@ -347,6 +360,7 @@ function App() {
           </div>
         </header>
 
+        {globalSearchOpen ? <GlobalSearchView query={query} boards={boards} configs={kubeConfigs} kubeGroups={kubeGroups} setBoards={setBoards} setConfigs={setKubeConfigs} setKubeGroups={setKubeGroups} onCopy={copyText} notify={notify} onClose={() => { setGlobalSearchOpen(false); setQuery('') }} /> : <>
         {section === 'bookmarks' && (
           <BookmarksView
             boards={boards}
@@ -364,6 +378,7 @@ function App() {
         )}
         {section === 'kubeconfig' && <KubeconfigView configs={kubeConfigs} setConfigs={setKubeConfigs} groups={kubeGroups} setGroups={setKubeGroups} commands={kubeCommands} setCommands={setKubeCommands} defaultCommandId={defaultCommandId} onDefaultCommandChange={setDefaultCommandId} query={query} onClearQuery={() => setQuery('')} onCopy={copyText} notify={notify} />}
         {section === 'settings' && <SettingsView boards={boards} configs={kubeConfigs} theme={theme} onThemeChange={setTheme} density={density} onDensityChange={setDensity} />}
+        </>}
       </main>
 
       <input ref={importRef} type="file" accept=".html,.htm" hidden onChange={(event) => {
@@ -375,6 +390,129 @@ function App() {
       {toast && <div className="toast" style={{ left: toastPosition.x, top: toastPosition.y }} role="status" aria-live="polite"><Check size={16} />{toast}</div>}
     </div>
   )
+}
+
+function GlobalSearchView({ query, boards, configs, kubeGroups, setBoards, setConfigs, setKubeGroups, onCopy, notify, onClose }: {
+  query: string
+  boards: BookmarkBoard[]
+  configs: KubeConfig[]
+  kubeGroups: KubeGroup[]
+  setBoards: React.Dispatch<React.SetStateAction<BookmarkBoard[]>>
+  setConfigs: React.Dispatch<React.SetStateAction<KubeConfig[]>>
+  setKubeGroups: React.Dispatch<React.SetStateAction<KubeGroup[]>>
+  onCopy: (value: string, label?: string) => void
+  notify: (message: string) => void
+  onClose: () => void
+}) {
+  const normalized = query.trim().toLocaleLowerCase()
+  const [tab, setTab] = useState<GlobalSearchTab>('all')
+  const [selectedBookmarkIds, setSelectedBookmarkIds] = useState<string[]>([])
+  const [selectedConfigIds, setSelectedConfigIds] = useState<string[]>([])
+  const [createMode, setCreateMode] = useState<'copy-board' | 'move-board' | 'copy-group' | 'move-group' | null>(null)
+  const [targetName, setTargetName] = useState('')
+
+  useEffect(() => {
+    setSelectedBookmarkIds([])
+    setSelectedConfigIds([])
+  }, [normalized])
+
+  const bookmarkResults = useMemo<GlobalBookmarkResult[]>(() => boards.flatMap((board) => board.links.filter((link) => {
+    const group = board.groups.find((item) => item.id === link.groupId)
+    const searchable = [board.name, board.description, board.tags.join(' '), group?.name ?? '', link.title, link.url, link.description ?? '', link.tags.join(' ')].join(' ').toLocaleLowerCase()
+    return !normalized || searchable.includes(normalized)
+  }).map((link) => ({ board, link, group: board.groups.find((item) => item.id === link.groupId) }))), [boards, normalized])
+
+  const kubeResults = useMemo<GlobalKubeResult[]>(() => configs.filter((config) => {
+    const group = kubeGroups.find((item) => item.id === config.groupId)
+    const searchable = [config.name, config.path, config.context, config.contexts?.join(' ') ?? '', config.server, config.tags.join(' '), group?.name ?? '', displayEnvName(config)].join(' ').toLocaleLowerCase()
+    return !normalized || searchable.includes(normalized)
+  }).map((config) => ({ config, group: kubeGroups.find((item) => item.id === config.groupId) })), [configs, kubeGroups, normalized])
+
+  const visibleBookmarkResults = tab === 'kubeconfig' ? [] : bookmarkResults
+  const visibleKubeResults = tab === 'bookmarks' ? [] : kubeResults
+  const totalResults = bookmarkResults.length + kubeResults.length
+  const visibleResultCount = visibleBookmarkResults.length + visibleKubeResults.length
+  const selectedBookmarkCount = selectedBookmarkIds.length
+  const selectedConfigCount = selectedConfigIds.length
+  const bookmarkSelectionId = (item: GlobalBookmarkResult) => `${item.board.id}:${item.link.id}`
+
+  const toggleBookmark = (id: string) => setSelectedBookmarkIds((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id])
+  const toggleConfig = (id: string) => setSelectedConfigIds((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id])
+  const selectAllVisible = () => {
+    const bookmarkIds = visibleBookmarkResults.map(bookmarkSelectionId)
+    const configIds = visibleKubeResults.map((item) => item.config.id)
+    const allBookmarksSelected = bookmarkIds.length > 0 && bookmarkIds.every((id) => selectedBookmarkIds.includes(id))
+    const allConfigsSelected = configIds.length > 0 && configIds.every((id) => selectedConfigIds.includes(id))
+    setSelectedBookmarkIds((current) => allBookmarksSelected ? current.filter((id) => !bookmarkIds.includes(id)) : Array.from(new Set([...current, ...bookmarkIds])))
+    setSelectedConfigIds((current) => allConfigsSelected ? current.filter((id) => !configIds.includes(id)) : Array.from(new Set([...current, ...configIds])))
+  }
+
+  const beginCreate = (mode: typeof createMode, selectAll = false) => {
+    if (!mode) return
+    if (selectAll) {
+      if (mode.endsWith('board')) {
+        setSelectedBookmarkIds(bookmarkResults.map((item) => item.link.id))
+        setSelectedConfigIds([])
+      } else {
+        setSelectedConfigIds(kubeResults.map((item) => item.config.id))
+        setSelectedBookmarkIds([])
+      }
+    }
+    setTargetName(mode.endsWith('board') ? `搜索结果 · ${query.trim()}` : `搜索分组 · ${query.trim()}`)
+    setCreateMode(mode)
+  }
+
+  const confirmCreate = () => {
+    const name = targetName.trim() || (createMode?.endsWith('board') ? '搜索结果' : '搜索分组')
+    if (!createMode) return
+    if (createMode.endsWith('board')) {
+      const selected = bookmarkResults.filter((item) => selectedBookmarkIds.includes(bookmarkSelectionId(item)))
+      if (!selected.length) return
+      const groupBySource = new Map<string, BookmarkGroup>()
+      selected.forEach(({ board, group }) => {
+        const key = `${board.id}:${group?.id ?? 'ungrouped'}`
+        if (!groupBySource.has(key)) groupBySource.set(key, { id: uid('group'), name: group ? `${board.name} · ${group.name}` : `${board.name} · 未分组`, color: group?.color ?? '#6f8cff' })
+      })
+      const links = selected.map(({ board, group, link }) => {
+        const key = `${board.id}:${group?.id ?? 'ungrouped'}`
+        return { ...link, id: uid('link'), groupId: groupBySource.get(key)!.id }
+      })
+      const newBoard: BookmarkBoard = { id: uid('board'), name, description: `从“${query.trim()}”搜索结果创建`, tags: ['搜索结果'], groups: Array.from(groupBySource.values()), links, updatedAt: new Date().toISOString() }
+      if (createMode === 'copy-board') setBoards((current) => [newBoard, ...current])
+      else {
+        const selectedIds = new Set(selected.map(bookmarkSelectionId))
+        setBoards((current) => [newBoard, ...current.map((board) => ({ ...board, links: board.links.filter((link) => !selectedIds.has(`${board.id}:${link.id}`)), updatedAt: selected.some((item) => item.board.id === board.id) ? new Date().toISOString() : board.updatedAt }))])
+      }
+      notify(createMode === 'copy-board' ? `已复制 ${links.length} 条链接到新看板` : `已移动 ${links.length} 条链接到新看板`)
+    } else {
+      const selected = kubeResults.filter((item) => selectedConfigIds.includes(item.config.id))
+      if (!selected.length) return
+      const group: KubeGroup = { id: uid('kube-group'), name, color: '#5d73e6' }
+      setKubeGroups((current) => [...current, group])
+      if (createMode === 'copy-group') setConfigs((current) => [...current, ...selected.map(({ config }) => ({ ...config, id: uid('config'), groupId: group.id, name: `${config.name}（副本）`, createdAt: new Date().toISOString(), updatedAt: '刚刚' }))])
+      else {
+        const selectedIds = new Set(selected.map((item) => item.config.id))
+        setConfigs((current) => current.map((config) => selectedIds.has(config.id) ? { ...config, groupId: group.id, updatedAt: '刚刚' } : config))
+      }
+      notify(createMode === 'copy-group' ? `已复制 ${selected.length} 个 kubeconfig 到新分组` : `已移动 ${selected.length} 个 kubeconfig 到新分组`)
+    }
+    setCreateMode(null)
+    setTargetName('')
+    setSelectedBookmarkIds([])
+    setSelectedConfigIds([])
+  }
+
+  return <div className="content-wrap global-search-view">
+    <div className="page-heading search-result-header">
+      <div><div className="eyebrow"><span className="eyebrow-dot" />GLOBAL SEARCH</div><h1>搜索结果</h1><p>在所有书签看板和 kubeconfig 中查找“<strong>{query}</strong>”，结果不会受当前页面限制。</p></div>
+      <div className="heading-actions"><button className="ghost-button" onClick={() => beginCreate('copy-board', true)} disabled={!bookmarkResults.length}><Save size={15} />保存为新看板</button><button className="ghost-button" onClick={() => beginCreate('copy-group', true)} disabled={!kubeResults.length}><Save size={15} />保存为新分组</button><button className="ghost-button" onClick={onClose}><X size={15} />返回当前页面</button></div>
+    </div>
+    <div className="search-result-summary"><div><strong>{totalResults}</strong><span>条结果</span></div><div className="search-result-scope"><span className="search-scope-badge bookmark">书签 {bookmarkResults.length}</span><span className="search-scope-badge kube">Kubeconfig {kubeResults.length}</span></div></div>
+    <div className="search-result-tabs" role="tablist" aria-label="搜索结果类型"><button className={tab === 'all' ? 'active' : ''} onClick={() => setTab('all')}>全部</button><button className={tab === 'bookmarks' ? 'active' : ''} onClick={() => setTab('bookmarks')}>书签链接 <b>{bookmarkResults.length}</b></button><button className={tab === 'kubeconfig' ? 'active' : ''} onClick={() => setTab('kubeconfig')}>Kubeconfig <b>{kubeResults.length}</b></button><button className="search-select-button" onClick={selectAllVisible} disabled={!visibleResultCount}><Check size={14} />选择当前结果</button></div>
+    {(selectedBookmarkCount > 0 || selectedConfigCount > 0) && <div className="search-result-actions"><span>已选择 {selectedBookmarkCount + selectedConfigCount} 项</span>{selectedBookmarkCount > 0 && <><button className="toolbar-button" onClick={() => beginCreate('copy-board')}>复制新建看板</button><button className="toolbar-button" onClick={() => beginCreate('move-board')}>移动新建看板</button></>}{selectedConfigCount > 0 && <><button className="toolbar-button" onClick={() => beginCreate('copy-group')}>复制新建分组</button><button className="toolbar-button" onClick={() => beginCreate('move-group')}>移动新建分组</button></>}</div>}
+    {visibleResultCount === 0 ? <div className="search-result-empty"><Search size={28} /><h2>{totalResults === 0 ? '没有找到匹配结果' : '当前分类没有匹配结果'}</h2><p>试试名称、链接、路径、Context 或标签。</p></div> : <div className="search-result-grid">{visibleBookmarkResults.map((item) => { const { board, group, link } = item; const selectionId = bookmarkSelectionId(item); return <article className="search-result-card" key={`link:${selectionId}`}><label className="search-result-check"><input type="checkbox" checked={selectedBookmarkIds.includes(selectionId)} onChange={() => toggleBookmark(selectionId)} aria-label={`选择 ${link.title}`} /><span /></label><button className="search-result-card-main" onClick={() => window.open(link.url, '_blank', 'noopener,noreferrer')}><div className="search-result-icon bookmark">{link.title.slice(0, 1).toUpperCase()}</div><div className="search-result-card-content"><strong>{link.title}</strong><span>{link.url}</span><small>{link.description || '无备注'}</small><div className="search-result-meta"><em>{board.name}</em>{group && <em>{group.name}</em>}{link.tags.slice(0, 3).map((tag) => <em key={tag}>{tag}</em>)}{link.tags.length > 3 && <em>+{link.tags.length - 3}</em>}</div></div><ArrowUpRight size={16} /></button><div className="search-result-card-tools"><button className="icon-button tiny" onClick={() => onCopy(link.url, '链接已复制')} aria-label="复制链接" title="复制链接"><Copy size={14} /></button></div></article> })}{visibleKubeResults.map(({ config, group }) => <article className="search-result-card search-result-card--kube" key={`config:${config.id}`}><label className="search-result-check"><input type="checkbox" checked={selectedConfigIds.includes(config.id)} onChange={() => toggleConfig(config.id)} aria-label={`选择 ${config.name}`} /><span /></label><div className="search-result-card-main"><div className="search-result-icon kube"><KeyRound size={17} /></div><div className="search-result-card-content"><strong>{config.name}</strong><span>{config.path}</span><small>Context：{config.context || '未设置'} · 环境变量：{displayEnvName(config)}</small><div className="search-result-meta">{group && <em>{group.name}</em>}{config.tags.slice(0, 3).map((tag) => <em key={tag}>{tag}</em>)}{config.tags.length > 3 && <em>+{config.tags.length - 3}</em>}</div></div></div></article>)}</div>}
+    {createMode && <Modal title={createMode.endsWith('board') ? (createMode === 'copy-board' ? '复制新建看板' : '移动新建看板') : (createMode === 'copy-group' ? '复制新建 kubeconfig 分组' : '移动新建 kubeconfig 分组')} onClose={() => setCreateMode(null)}><div className="form-stack"><label>{createMode.endsWith('board') ? '看板名称' : '分组名称'}<input autoFocus value={targetName} onChange={(event) => setTargetName(event.target.value)} onKeyDown={(event) => { if (isCommittedEnter(event)) confirmCreate() }} /></label><p className="form-hint">{createMode.startsWith('copy') ? '复制会保留原项目，并建立一份新的结果集合。' : '移动会从原分组中移除选中项目。'}</p><div className="modal-actions"><button className="ghost-button" onClick={() => setCreateMode(null)}>取消</button><button className="primary-button" onClick={confirmCreate}><Save size={14} />确认创建</button></div></div></Modal>}
+  </div>
 }
 
 function NavItem({ icon, label, active, onClick, soon }: { icon: React.ReactNode; label: string; active: boolean; onClick: () => void; soon?: boolean }) {
