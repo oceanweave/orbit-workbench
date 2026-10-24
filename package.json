@@ -1,7 +1,7 @@
 {
   "name": "orbit-workbench",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Local-first bookmark and kubeconfig workbench",
   "author": "Orbit Workbench",
   "type": "module",
@@ -13,6 +13,10 @@
     "preview": "vite preview",
     "app:dir": "npm run build && electron-builder --mac --dir",
     "app:dmg": "npm run build && electron-builder --mac dmg",
+    "app:win": "npm run build && electron-builder --win --x64",
+    "app:win:dir": "npm run build && electron-builder --win dir --x64",
+    "app:win:nsis": "npm run build && electron-builder --win nsis --x64",
+    "app:win:zip": "npm run build && electron-builder --win zip --x64",
     "app:open": "open \"release/mac-arm64/Orbit Workbench.app\""
   },
   "dependencies": {
@@ -46,12 +50,38 @@
     ],
     "mac": {
       "category": "public.app-category.developer-tools",
+      "artifactName": "Orbit-Workbench-${version}-${arch}.${ext}",
       "target": [
         {
           "target": "dmg",
-          "arch": ["arm64"]
+          "arch": [
+            "arm64"
+          ]
         }
       ]
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "artifactName": "Orbit-Workbench-${version}-${arch}.${ext}"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "runAfterFinish": false,
+      "deleteAppDataOnUninstall": false
     }
   }
 }

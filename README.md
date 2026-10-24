@@ -38,6 +38,23 @@ npm run app:dmg
 
 本地包使用 arm64 架构，暂未配置 Developer ID 签名。第一次在其他 Mac 上打开时，系统可能需要在 Finder 中右键应用并选择“打开”。
 
+## Windows 应用
+
+Windows 版本使用 Electron Builder 生成 x64 安装包，目标是 Windows 10 及 Windows 11。Windows x64 安装包可以在两套系统上使用；构建产物不包含真实 kubeconfig，也不会在构建阶段执行集群命令。
+
+```bash
+# 生成 NSIS 安装程序（推荐分发）
+npm run app:win:nsis
+
+# 生成免安装目录，用于 smoke test
+npm run app:win:dir
+
+# 生成 zip 便携包
+npm run app:win:zip
+```
+
+产物位于 `release/`，文件名类似 `Orbit-Workbench-0.1.1-x64.exe` 和 `Orbit-Workbench-0.1.1-x64.zip`。macOS 可以交叉构建这些产物；本机只验证了打包和文件结构，未在 Windows 10/11 虚拟机或实体机上运行安装器。提交发布前应在 `windows-latest` CI 或实际 Windows 10/11 环境执行安装、启动、文件选择和 kubeconfig 写回 smoke test。
+
 ## 已实现
 
 - 书签看板：看板、分组、标签、搜索、紧凑链接行、打开链接、复制链接、删除链接；名称、网址和备注支持行内编辑。
@@ -59,6 +76,7 @@ npm run app:dmg
 - 本地持久化：数据保存到浏览器 `localStorage`，不上传 kubeconfig 内容。
 - 界面主题与密度：支持暗色 / 亮色主题以及舒适 / 紧凑信息密度，选择会自动保存到本机；筛选栏提供清除筛选入口。
 - 响应式布局：桌面、窄桌面和移动宽度均有布局切换。
+- 桌面发布：Electron macOS arm64 `.app`/DMG，以及 Windows x64 NSIS 安装程序和 zip 便携包。
 
 ## 项目结构和协作
 

@@ -1,0 +1,50 @@
+name: Windows build
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check
+        run: npm run check
+
+      - name: Build Windows packages
+        run: npm run app:win
+
+      - name: Verify Windows artifacts
+        shell: pwsh
+        run: |
+          $installer = Get-ChildItem -Path release -Filter '*.exe' -File
+          $archive = Get-ChildItem -Path release -Filter '*.zip' -File
+          if (-not $installer) { throw 'NSIS installer was not generated.' }
+          if (-not $archive) { throw 'Windows zip package was not generated.' }
+          $installer | Select-Object FullName, Length
+          $archive | Select-Object FullName, Length
+
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: orbit-workbench-windows
+          path: |
+            release/*.exe
+            release/*.zip
+            release/latest.yml
+          if-no-files-found: error

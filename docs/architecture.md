@@ -67,8 +67,11 @@ KUBECONFIG=$<ENV_NAME> kubectl <template.command> [-n <namespace>] [--context <c
 
 - `npm run app:dir`：生成可直接运行的 macOS `.app` 目录。
 - `npm run app:dmg`：生成 Apple Silicon arm64 DMG。
+- `npm run app:win:dir`：生成 Windows x64 免安装目录，可用于启动 smoke test。
+- `npm run app:win:nsis`：生成 Windows x64 NSIS 安装程序。
+- `npm run app:win:zip`：生成 Windows x64 zip 便携包。
 
-当前包未配置 Developer ID 签名和公证；发布给其他机器前需要补充签名、公证和 Windows 打包目标。
+Windows 目标面向 Windows 10 和 Windows 11 x64。macOS 可以通过 Electron Builder 交叉打包；本机验证的是构建、安装包文件和免安装目录结构，`.github/workflows/windows.yml` 在 `windows-latest` 上执行 Windows 构建 smoke test。发布前仍应在实际 Windows 10/11 环境验证安装、启动、文件选择和 kubeconfig 写回。当前包未配置 Developer ID 签名、公证或 Windows 代码签名。
 
 ## 后续拆分建议
 
