@@ -1155,3 +1155,48 @@ pre { padding: 15px 14px; font-size: 11px; line-height: 1.9; }
 @media (max-width: 760px) {
   .tag-filter-row > .selection-toolbar.is-active .selection-actions { flex-basis: 100%; }
 }
+
+/* Kubeconfig command builder: keep the selected-config actions easy to hit and
+   align Context/namespace fields on the same label-and-control grid. */
+.selected-config > .icon-button.tiny {
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  border-radius: 9px;
+}
+.selected-config > .icon-button.tiny svg {
+  width: 18px;
+  height: 18px;
+}
+.command-form > .form-row {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+.command-form > .form-row > label {
+  display: grid;
+  grid-template-rows: 17px 40px;
+  min-width: 0;
+  align-content: start;
+}
+.command-form > .form-row > label > select,
+.command-form > .form-row > label > input {
+  min-width: 0;
+  margin-top: 0;
+}
+.command-form > .form-row > label > select {
+  width: 100%;
+}
+
+.app-shell[data-density='compact'] .selected-config > .icon-button.tiny {
+  width: 34px;
+  height: 34px;
+  flex-basis: 34px;
+}
+
+@media (max-width: 620px) {
+  .command-form > .form-row {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+}
