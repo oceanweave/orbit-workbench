@@ -21,6 +21,7 @@
 ### Added
 
 - 推送 `v*` tag 后自动创建 GitHub Release，并上传 macOS DMG、Windows NSIS 安装包和 ZIP 便携包。
+- 发布工作流统一使用 Node.js 22，满足当前 Electron 打包依赖的运行时要求。
 
 ## 0.1.1 - 2026-10-24
 
