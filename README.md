@@ -55,7 +55,7 @@ npm run app:win:zip
 
 产物位于 `release/`，文件名类似 `Orbit-Workbench-${version}-x64.exe` 和 `Orbit-Workbench-${version}-x64.zip`。macOS 可以交叉构建这些产物；本机只验证了打包和文件结构，未在 Windows 10/11 虚拟机或实体机上运行安装器。提交发布前应在 `windows-latest` CI 或实际 Windows 10/11 环境执行安装、启动、文件选择和 kubeconfig 写回 smoke test。
 
-推送 `v*` tag 后，`.github/workflows/release.yml` 会在 macOS 和 Windows runner 上分别构建，并自动创建 GitHub Release 上传 DMG、NSIS EXE 和 ZIP 资产。发布构建统一使用 Node.js 22，以满足当前 Electron 打包依赖的运行时要求。
+推送 `v*` tag 后，`.github/workflows/release.yml` 会在 macOS 和 Windows runner 上分别构建，并自动创建 GitHub Release 上传 DMG、NSIS EXE 和 ZIP 资产。发布构建统一使用 Node.js 22，以满足当前 Electron 打包依赖的运行时要求；electron-builder 只负责生成文件，Release job 负责上传。
 
 ## 已实现
 
