@@ -23,6 +23,11 @@ type Props = {
 export function BookmarkGroupTree({ board, activeGroupId, dragItem, dropTarget, canDrop, onTarget, onLeave, onDragStart, onDragEnd, onSelect, onEdit, onDrop }: Props) {
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
   const rows = useMemo(() => bookmarkGroupRows(board.groups), [board.groups])
+  const lastSiblingIds = useMemo(() => {
+    const last = new Map<string | undefined, string>()
+    rows.forEach((row) => last.set(row.parentId, row.group.id))
+    return new Set(last.values())
+  }, [rows])
   const counts = useMemo(() => {
     const values = new Map<string, number>()
     board.links.forEach((link) => values.set(link.groupId, (values.get(link.groupId) || 0) + 1))
@@ -45,14 +50,15 @@ export function BookmarkGroupTree({ board, activeGroupId, dragItem, dropTarget, 
   }, [dragItem, dropTarget, board.id, collapsed])
 
   return <div className="bookmark-folder-tree" role="group" aria-label={`${board.name} 的分组树`}>
-    {rows.filter((row) => !row.ancestors.some((id) => collapsed[id])).map(({ group, depth, path, hasChildren }) => {
+    {rows.filter((row) => !row.ancestors.some((id) => collapsed[id])).map(({ group, depth, path, hasChildren, ancestors }) => {
       const identity: WorkspaceDragItem = { kind: 'group', boardId: board.id, id: group.id }
       const destination = (event: React.DragEvent<HTMLElement>): WorkspaceDropTarget => dragItem?.kind === 'link' ? { ...identity, position: 'inside' } : rowDropTarget(event, identity, true)
       const accepts = Boolean(dragItem && canDrop({ ...identity, position: 'inside' }))
-      return <div key={group.id} className={`bookmark-folder-row drag-sort-row ${activeGroupId === group.id ? 'selected' : ''} ${dropClassName(dropTarget, identity)} ${accepts ? 'accepts-drop' : ''} ${isSameDragItem(dragItem, identity) ? 'drag-source' : ''}`} style={{ '--folder-depth': Math.min(depth, 8) } as React.CSSProperties} data-group-id={group.id} title={`${board.name} / ${path}`} draggable onDragStart={(event) => onDragStart(event, group)} onDragEnd={onDragEnd}
+      return <div key={group.id} className={`bookmark-folder-row drag-sort-row ${activeGroupId === group.id ? 'selected' : ''} ${dropClassName(dropTarget, identity)} ${accepts ? 'accepts-drop' : ''} ${isSameDragItem(dragItem, identity) ? 'drag-source' : ''}`} style={{ '--folder-depth': depth } as React.CSSProperties} data-group-id={group.id} data-folder-depth={depth} title={`${board.name} / ${path}`} draggable onDragStart={(event) => onDragStart(event, group)} onDragEnd={onDragEnd}
         onDragOver={(event) => { const target = destination(event); onTarget(event, canDrop(target) ? target : null) }}
         onDragLeave={onLeave}
         onDrop={(event) => onDrop(event, destination(event))}>
+        <span className="folder-tree-guides" aria-hidden="true">{ancestors.map((id, level) => !lastSiblingIds.has(id) && <i key={id} className="folder-ancestor-guide" style={{ '--guide-level': level } as React.CSSProperties} />)}<i className={`folder-current-guide ${lastSiblingIds.has(group.id) ? 'is-last' : ''}`} /><i className="folder-branch-connector" /></span>
         {hasChildren ? <button className="folder-disclosure" aria-label={`${collapsed[group.id] ? '展开' : '收起'}分组 ${path}`} aria-expanded={!collapsed[group.id]} onClick={() => setCollapsed((current) => ({ ...current, [group.id]: !current[group.id] }))}>{collapsed[group.id] ? <ChevronRight size={14} /> : <ChevronDown size={14} />}</button> : <span className="folder-disclosure-spacer" />}
         <button className="folder-select" data-drag-source aria-label={`选择分组 ${board.name} / ${path}`} aria-current={activeGroupId === group.id ? 'true' : undefined} onClick={() => onSelect(group.id)}>
           {hasChildren && !collapsed[group.id] ? <FolderOpen size={15} style={{ color: group.color }} /> : <Folder size={15} style={{ color: group.color }} />}

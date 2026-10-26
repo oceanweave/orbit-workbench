@@ -7,7 +7,7 @@
 .drag-sort-row.drop-before::before, .drag-sort-row.drop-after::after { content: ''; position: absolute; z-index: 5; left: 3px; right: 3px; height: 3px; border-radius: 4px; background: var(--blue); pointer-events: none; box-shadow: 0 0 0 2px var(--panel); }
 .drag-sort-row.drop-before::before { top: -3px; }
 .drag-sort-row.drop-after::after { bottom: -3px; }
-.bookmark-folder-row.drop-before::before, .bookmark-folder-row.drop-after::after { left: calc(4px + var(--folder-depth) * 12px); }
+.bookmark-folder-row.drop-before::before, .bookmark-folder-row.drop-after::after { left: 3px; }
 .drag-sort-row.drop-inside { outline: 2px solid var(--blue); outline-offset: -2px; background: rgba(111,140,255,.17) !important; box-shadow: inset 4px 0 var(--blue) !important; }
 .drag-sort-row.drop-inside .folder-select, .drag-sort-row.drop-inside > span { color: var(--blue-soft); }
 .drag-status { min-height: 42px; }
