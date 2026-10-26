@@ -12,6 +12,8 @@ export type BookmarkGroup = {
   id: string
   name: string
   color: string
+  /** Omitted for a top-level folder, preserving existing flat workspaces. */
+  parentId?: string
 }
 
 export type BookmarkBoard = {

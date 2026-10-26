@@ -46,6 +46,10 @@
 
 应用启动时会对旧版本 Kubeconfig 数据做一次轻量迁移，为缺少的 `contexts`、`createdAt` 和 `envName` 字段补齐默认值。
 
+书签分组采用扁平存储加可选 `parentId`：没有父分组的旧记录继续视为根目录，链接始终引用直属 `groupId`。`shared/bookmarks.mjs` 统一提供树遍历、祖先路径、子树筛选、整棵分组移动、删除保留策略及 Netscape HTML 递归导入导出。树遍历防止环和孤立引用导致分组不可见；修改上级时拒绝自身与后代。删除一个分组时，直属链接迁移到父级或可用分组，直接子分组提升一级，深层链接与目录保留。
+
+`BookmarkGroupTree` 独立渲染目录、折叠状态、子树链接计数和拖拽悬停展开。页面筛选、批量移动、链接行的分组选择及搜索结果均展示完整路径；搜索结果新建看板时复制必要的祖先链，避免再次摊平。`tests/bookmarks.test.mjs` 使用纯模拟书签和 HTML5 DOM 解析器测试 24 层目录、空目录、同名分支、浏览器 HTML 两种 DL 排列形式、移动和删除后引用完整性。测试依赖 jsdom 不进入生产应用。
+
 Kubeconfig 记录还包含用户可编辑的 `envName`（环境变量名称）、兼容旧版本的 `alias`/`metaName` 字段、来源类型和原始 YAML 文本。桌面版通过 `electron/preload.cjs` 暴露受限的文件选择、读取和写回 API；渲染层不会直接访问 Node.js 或 `ipcRenderer`。文件选择不按扩展名限制，兼容无后缀、`.yaml`、`.yml`、`.config`、`.conf` 和 `.txt` 等常见命名；写入路径支持 `~/`，由主进程展开到当前用户主目录。
 
 导入由 `KubeImportPanel` 统一提供文件、目录、剪贴板入口。`shared/kubeconfig.mjs` 使用 YAML 解析器识别 Config、提取真实 Context 与对应集群、按路径去重并分配不冲突的环境变量名称；不执行 `users.exec`。`electron/kube-files.cjs` 提供可独立测试的只读文件读取、目录递归扫描与本地独占保存。单文件上限 2 MB，单次目录扫描上限 5,000 文件 / 32 MB 有效内容；不追踪符号链接，跳过 `.git` 和 `node_modules`，错误不包含原始 YAML。扫描结果先预览再勾选导入，写入本地工作区前检查存储容量。
