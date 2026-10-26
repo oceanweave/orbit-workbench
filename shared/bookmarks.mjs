@@ -1,3 +1,5 @@
+import { reorderItems } from './ordering.mjs'
+
 const id = (prefix) => `${prefix}-${globalThis.crypto.randomUUID()}`
 const timestamp = () => new Date().toISOString()
 const palette = ['#6f8cff', '#44c7a5', '#f2ab55', '#c486ff']
@@ -79,6 +81,52 @@ export function moveBookmarkLinks(boards, sourceBoardId, linkIds, targetBoardId,
     return board
   })
   return { boards: result, groupId, count: links.length }
+}
+
+// A folder is moved as one subtree, including its links. Edge drops adopt the
+// target's parent; middle drops adopt the target itself. IDs remain stable.
+export function placeBookmarkGroup(boards, sourceBoardId, groupId, targetBoardId, targetGroupId, position = 'inside') {
+  if (!['before', 'after', 'inside'].includes(position)) throw new Error('放置位置无效')
+  const source = boards.find((board) => board.id === sourceBoardId)
+  const target = boards.find((board) => board.id === targetBoardId)
+  if (!source || !target) throw new Error('源看板或目标看板不存在')
+  const sourceRows = bookmarkGroupRows(source.groups)
+  const root = sourceRows.find((row) => row.group.id === groupId)
+  if (!root) throw new Error('源分组不存在')
+  const ids = bookmarkDescendantIds(source.groups, groupId)
+  if (sourceBoardId === targetBoardId && ids.has(targetGroupId)) throw new Error('不能移入自己或自己的子分组')
+  const targetRow = bookmarkGroupRows(target.groups).find((row) => row.group.id === targetGroupId)
+  if (targetGroupId && !targetRow) throw new Error('目标分组不存在')
+  if (!targetGroupId && position !== 'inside') throw new Error('请选择目标分组')
+  if (sourceBoardId !== targetBoardId && target.groups.some((group) => ids.has(group.id))) throw new Error('目标看板存在重复的分组编号')
+  const parentId = position === 'inside' ? targetRow?.group.id : targetRow?.parentId
+  const moving = sourceRows.filter((row) => ids.has(row.group.id)).map((row) => ({ ...row.group, parentId: row.group.id === groupId ? parentId : row.parentId }))
+  const remaining = bookmarkGroupRows(target.groups).filter((row) => sourceBoardId !== targetBoardId || !ids.has(row.group.id)).map((row) => ({ ...row.group, parentId: row.parentId }))
+  let index = remaining.length
+  if (targetRow) {
+    if (position === 'before') index = remaining.findIndex((group) => group.id === targetGroupId)
+    else {
+      const targetSubtree = bookmarkDescendantIds(remaining, targetGroupId)
+      index = remaining.reduce((last, group, offset) => targetSubtree.has(group.id) ? offset + 1 : last, 0)
+    }
+  }
+  const groups = [...remaining.slice(0, index), ...moving, ...remaining.slice(index)]
+  const movingLinks = source.links.filter((link) => ids.has(link.groupId))
+  const updatedAt = timestamp()
+  return boards.map((board) => {
+    if (board.id === targetBoardId) return { ...board, groups, updatedAt, links: sourceBoardId === targetBoardId ? board.links : [...board.links, ...movingLinks] }
+    if (board.id === sourceBoardId) return { ...board, updatedAt, groups: board.groups.filter((group) => !ids.has(group.id)), links: board.links.filter((link) => !ids.has(link.groupId)) }
+    return board
+  })
+}
+
+export function placeBookmarkLink(boards, sourceBoardId, linkId, targetBoardId, targetLinkId, position) {
+  const target = boards.find((board) => board.id === targetBoardId)?.links.find((link) => link.id === targetLinkId)
+  if (!target) throw new Error('目标链接不存在')
+  if (sourceBoardId === targetBoardId && linkId === targetLinkId) return boards
+  const moved = moveBookmarkLinks(boards, sourceBoardId, [linkId], targetBoardId, target.groupId)
+  if (!moved.count) throw new Error('源链接不存在')
+  return moved.boards.map((board) => board.id === targetBoardId ? { ...board, links: reorderItems(board.links, linkId, targetLinkId, position) } : board)
 }
 
 export function createBrowserBookmarksHtml(boards) {

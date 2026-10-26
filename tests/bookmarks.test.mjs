@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { JSDOM } from 'jsdom'
-import { bookmarkGroupRows, bookmarkGroupPath, bookmarkDescendantIds, reparentBookmarkGroup, deleteBookmarkGroup, moveBookmarkLinks, createBrowserBookmarksHtml, parseBookmarksHtml, bookmarkSearchBoard } from '../shared/bookmarks.mjs'
+import { bookmarkGroupRows, bookmarkGroupPath, bookmarkDescendantIds, reparentBookmarkGroup, deleteBookmarkGroup, moveBookmarkLinks, placeBookmarkGroup, placeBookmarkLink, createBrowserBookmarksHtml, parseBookmarksHtml, bookmarkSearchBoard } from '../shared/bookmarks.mjs'
 
 const document = (html) => new JSDOM(html).window.document
 const fixture = () => ({ id: 'board', name: '多层书签', description: '', tags: [], updatedAt: '2026-10-26',
@@ -129,4 +129,65 @@ test('single and batch link moves target deep folders within and across boards w
   assert.throws(() => moveBookmarkLinks([source], source.id, ['link-0'], source.id, 'missing'), /分组不存在/)
   const empty = moveBookmarkLinks([source, { ...target, groups: [] }], source.id, ['link-0'], target.id)
   assert.equal(empty.boards[1].groups[0].id, empty.boards[1].links[0].groupId)
+})
+
+test('folder edge drops reorder siblings and retain the complete subtree', () => {
+  const original = fixture()
+  const before = JSON.stringify(original)
+  const [first] = placeBookmarkGroup([original], original.id, 'sibling', original.id, 'root', 'before')
+  assert.deepEqual(bookmarkGroupRows(first.groups).filter((row) => !row.parentId).map((row) => row.group.id), ['sibling', 'root'])
+  const [last] = placeBookmarkGroup([first], first.id, 'sibling', first.id, 'root', 'after')
+  assert.equal(bookmarkGroupRows(last.groups).at(-1).group.id, 'sibling')
+  const [child] = placeBookmarkGroup([original], original.id, 'same-name', original.id, 'grandchild', 'before')
+  assert.equal(child.groups.find((group) => group.id === 'same-name').parentId, 'child')
+  assert.deepEqual(bookmarkGroupRows(child.groups).filter((row) => row.parentId === 'child').map((row) => row.group.id), ['same-name', 'grandchild'])
+  assert.deepEqual(child.links, original.links)
+  assert.equal(JSON.stringify(original), before)
+})
+
+test('middle drops nest folders and board drops promote them to the root', () => {
+  const original = fixture()
+  const [nested] = placeBookmarkGroup([original], original.id, 'sibling', original.id, 'deep')
+  assert.equal(bookmarkGroupPath(nested.groups, 'sibling'), '工程 / 后端 / Kubernetes / 排障 / 工具')
+  const [top] = placeBookmarkGroup([nested], nested.id, 'grandchild', nested.id)
+  assert.equal(bookmarkGroupPath(top.groups, 'deep'), 'Kubernetes / 排障')
+  assert.equal(bookmarkGroupPath(top.groups, 'sibling'), 'Kubernetes / 排障 / 工具')
+  assert.equal(top.links.length, original.links.length)
+  for (const position of ['before', 'after', 'inside']) {
+    assert.throws(() => placeBookmarkGroup([original], original.id, 'child', original.id, 'empty', position), /子分组/)
+    assert.throws(() => placeBookmarkGroup([original], original.id, 'child', original.id, 'child', position), /自己/)
+  }
+})
+
+test('cross-board folder drops move all descendants and links, including into an empty board', () => {
+  const source = fixture()
+  const target = { ...fixture(), id: 'destination', name: '目标', groups: [{ id: 'target-root', name: '收藏' }], links: [] }
+  const [remaining, moved] = placeBookmarkGroup([source, target], source.id, 'child', target.id, 'target-root')
+  assert.equal(bookmarkGroupPath(moved.groups, 'empty'), '收藏 / 后端 / Kubernetes / 排障 / 空目录')
+  const subtree = bookmarkDescendantIds(source.groups, 'child')
+  assert.ok(remaining.groups.every((group) => !subtree.has(group.id)))
+  assert.ok(remaining.links.every((link) => !subtree.has(link.groupId)))
+  assert.equal(remaining.links.length + moved.links.length, source.links.length)
+  const result = placeBookmarkGroup([remaining, moved, { ...target, id: 'empty', groups: [] }], moved.id, 'child', 'empty')
+  assert.equal(bookmarkGroupPath(result[2].groups, 'deep'), '后端 / Kubernetes / 排障')
+  const restored = parseBookmarksHtml(createBrowserBookmarksHtml(result), document)
+  assert.deepEqual(snapshot(restored[2]), snapshot(result[2]))
+  assert.throws(() => placeBookmarkGroup([source, target], source.id, 'child', target.id, 'missing'), /目标分组不存在/)
+})
+
+test('link row drops preserve manual order and adopt the exact target group without changing hidden rows', () => {
+  const original = fixture()
+  const [before] = placeBookmarkLink([original], original.id, 'link-5', original.id, 'link-2', 'before')
+  assert.deepEqual(before.links.map((link) => link.id), ['link-0', 'link-1', 'link-5', 'link-2', 'link-3', 'link-4'])
+  assert.equal(before.links.find((link) => link.id === 'link-5').groupId, 'grandchild')
+  const [after] = placeBookmarkLink([original], original.id, 'link-0', original.id, 'link-5', 'after')
+  assert.equal(after.links.at(-1).id, 'link-0')
+  assert.equal(after.links.at(-1).groupId, 'same-name')
+  const target = { ...original, id: 'target', links: [{ ...original.links[0], id: 'target-link', groupId: 'deep' }] }
+  const [source, destination] = placeBookmarkLink([original, target], original.id, 'link-3', target.id, 'target-link', 'after')
+  assert.equal(source.links.length, original.links.length - 1)
+  assert.deepEqual(destination.links.map((link) => link.id), ['target-link', 'link-3'])
+  assert.equal(destination.links[1].groupId, 'deep')
+  assert.throws(() => placeBookmarkLink([original], original.id, 'missing', original.id, 'link-2', 'before'), /源链接不存在/)
+  assert.equal(placeBookmarkLink([original], original.id, 'link-2', original.id, 'link-2', 'after')[0], original)
 })

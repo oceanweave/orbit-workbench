@@ -50,14 +50,16 @@ import {
 import { commandTemplates, initialBoards, initialKubeConfigs, initialKubeGroups } from './data'
 import { KubeImportPanel } from './components/KubeImportPanel'
 import { BookmarkGroupTree } from './components/BookmarkGroupTree'
-import { bookmarkGroupRows, bookmarkGroupPath, bookmarkDescendantIds, reparentBookmarkGroup, deleteBookmarkGroup, moveBookmarkLinks, createBrowserBookmarksHtml, parseBookmarksHtml, bookmarkSearchBoard } from '../shared/bookmarks.mjs'
+import { useWorkspaceDrag, rowDropTarget, dropClassName, isSameDragItem, type WorkspaceDropTarget } from './hooks/useWorkspaceDrag'
+import { reorderItems, placeGroupedItem, orderVisibleItems } from '../shared/ordering.mjs'
+import { bookmarkGroupRows, bookmarkGroupPath, bookmarkDescendantIds, reparentBookmarkGroup, deleteBookmarkGroup, moveBookmarkLinks, placeBookmarkGroup, placeBookmarkLink, createBrowserBookmarksHtml, parseBookmarksHtml, bookmarkSearchBoard } from '../shared/bookmarks.mjs'
 import { inspectKubeconfig, prepareKubeImports } from '../shared/kubeconfig.mjs'
 import type { BookmarkBoard, BookmarkGroup, CommandTemplate, KubeConfig, KubeGroup, LinkItem } from './types'
 
 type Section = 'bookmarks' | 'kubeconfig' | 'settings'
 type Theme = 'dark' | 'light'
 type Density = 'comfortable' | 'compact'
-type ConfigSort = 'created' | 'name'
+type ConfigSort = 'manual' | 'created' | 'name'
 type TagEditMode = 'replace' | 'add' | 'remove'
 type GlobalSearchTab = 'all' | 'bookmarks' | 'kubeconfig'
 
@@ -496,9 +498,7 @@ function BookmarksView({ boards, setBoards, query, addBoard, onImport, onExport,
   const [activeBoardId, setActiveBoardId] = useState(boards[0]?.id ?? '')
   const [activeGroupId, setActiveGroupId] = useState('all')
   const [tagFilters, setTagFilters] = useState<string[]>([])
-  const [draggedLink, setDraggedLink] = useState<{ boardId: string; linkId: string } | null>(null)
-  const [dragOverTarget, setDragOverTarget] = useState<string | null>(null)
-  const dragPreviewRef = useRef<HTMLDivElement | null>(null)
+  const drag = useWorkspaceDrag()
   const [expandedBoards, setExpandedBoards] = useState<Record<string, boolean>>(() => Object.fromEntries(boards.map((board) => [board.id, true])))
   const [showQuickAdd, setShowQuickAdd] = useState(false)
   const [showGroupAdd, setShowGroupAdd] = useState(false)
@@ -546,7 +546,23 @@ function BookmarksView({ boards, setBoards, query, addBoard, onImport, onExport,
   const groupRows = useMemo(() => bookmarkGroupRows(board?.groups ?? []), [board?.groups])
   const activeGroupIds = useMemo(() => bookmarkDescendantIds(board?.groups ?? [], activeGroupId), [board?.groups, activeGroupId])
   const activeGroupRow = groupRows.find((row) => row.group.id === activeGroupId)
-  const dropPath = draggedLink && dragOverTarget ? boards.flatMap((item) => bookmarkGroupRows(item.groups).map((row) => ({ key: `${item.id}:${row.group.id}`, path: `${item.name} / ${row.path}` }))).find((item) => item.key === dragOverTarget)?.path : ''
+  const draggedSubtree = useMemo(() => drag.item?.kind === 'group' ? bookmarkDescendantIds(boards.find((item) => item.id === drag.item?.boardId)?.groups ?? [], drag.item.id) : new Set<string>(), [boards, drag.item])
+  const canDrop = (target: WorkspaceDropTarget) => {
+    const source = drag.item
+    if (!source || isSameDragItem(source, target)) return false
+    if (source.kind === 'board') return target.kind === 'board' && target.position !== 'inside'
+    if (source.kind === 'group') return (target.kind === 'board' && target.position === 'inside') || (target.kind === 'group' && !(source.boardId === target.boardId && draggedSubtree.has(target.id)))
+    return source.kind === 'link' && (target.kind === 'group' || target.kind === 'link' || target.kind === 'board')
+  }
+  const targetBoard = boards.find((item) => item.id === drag.target?.boardId || (drag.target?.kind === 'board' && item.id === drag.target.id))
+  const targetName = drag.target?.kind === 'board' ? `${targetBoard?.name}${drag.item?.kind === 'link' ? ' / 未分组' : ''}` : drag.target?.kind === 'group' ? `${targetBoard?.name} / ${bookmarkGroupPath(targetBoard?.groups ?? [], drag.target.id)}` : targetBoard?.links.find((link) => link.id === drag.target?.id)?.title
+  const dropHint = drag.target ? `${drag.target.position === 'inside' ? '移入' : drag.target.position === 'before' ? '插入到前面' : '插入到后面'}：${targetName}` : '边缘显示插入线；分组中央高亮表示移入'
+  useEffect(() => {
+    if (!drag.item || drag.target?.kind !== 'board' || drag.target.position !== 'inside') return
+    const id = drag.target.id
+    const timer = window.setTimeout(() => setExpandedBoards((current) => current[id] ? current : { ...current, [id]: true }), 500)
+    return () => window.clearTimeout(timer)
+  }, [drag.item, drag.target])
   const allTags = useMemo(() => Array.from(new Set(board?.links.flatMap((link) => link.tags) ?? [])).sort((a, b) => a.localeCompare(b, 'zh-CN')), [board])
   const visibleLinks = useMemo(() => {
     if (!board) return []
@@ -640,15 +656,48 @@ function BookmarksView({ boards, setBoards, query, addBoard, onImport, onExport,
     setShowBoardAdd(false)
   }
 
-  const moveLink = (targetBoardId: string, targetGroupId: string) => {
-    if (!draggedLink) return
-    setBoards((current) => moveBookmarkLinks(current, draggedLink.boardId, [draggedLink.linkId], targetBoardId, targetGroupId).boards)
-    setActiveBoardId(targetBoardId)
-    setActiveGroupId(targetGroupId)
-    setTagFilters([])
-    setDraggedLink(null)
-    setDragOverTarget(null)
-    notify('链接已移动')
+  const applyDrop = (event: React.DragEvent<HTMLElement>, target: WorkspaceDropTarget) => {
+    if (!drag.item) return
+    event.preventDefault()
+    event.stopPropagation()
+    const source = drag.item
+    if (!canDrop(target)) { drag.finish(); return }
+    try {
+      const targetBoardId = target.kind === 'board' ? target.id : target.boardId!
+      let next = boards
+      let selectedGroupId = activeGroupId
+      if (source.kind === 'board' && target.position !== 'inside') next = reorderItems(boards, source.id, target.id, target.position)
+      else if (source.kind === 'group') {
+        next = placeBookmarkGroup(boards, source.boardId!, source.id, targetBoardId, target.kind === 'group' ? target.id : undefined, target.position)
+        selectedGroupId = source.id
+      } else if (source.kind === 'link') {
+        if (target.kind === 'link' && target.position !== 'inside') {
+          next = placeBookmarkLink(boards, source.boardId!, source.id, targetBoardId, target.id, target.position)
+          selectedGroupId = targetBoardId === activeBoardId ? activeGroupId : 'all'
+        } else {
+          // A board header means its root, never an arbitrary first folder.
+          let destination = target.kind === 'group' ? target.id : ''
+          let prepared = boards
+          if (target.kind === 'board') {
+            const ungrouped = boards.find((item) => item.id === targetBoardId)?.groups.find((group) => !group.parentId && group.name === '未分组')
+            destination = ungrouped?.id || uid('group')
+            if (!ungrouped) prepared = boards.map((item) => item.id === targetBoardId ? { ...item, groups: [...item.groups, { id: destination, name: '未分组', color: '#6f8cff' }] } : item)
+          }
+          const moved = moveBookmarkLinks(prepared, source.boardId!, [source.id], targetBoardId, destination)
+          next = moved.boards
+          selectedGroupId = moved.groupId
+        }
+      }
+      setBoards(next)
+      if (source.kind !== 'board') {
+        setActiveBoardId(targetBoardId)
+        setActiveGroupId(selectedGroupId)
+        setTagFilters([])
+        setExpandedBoards((current) => ({ ...current, [targetBoardId]: true }))
+      }
+      notify(target.position === 'inside' ? '已移动，子分组和条目均已保留' : '顺序与分组已更新')
+    } catch (error) { notify(error instanceof Error ? error.message : '无法移动') }
+    drag.finish()
   }
 
   const requestDeleteBoard = () => {
@@ -796,27 +845,28 @@ function BookmarksView({ boards, setBoards, query, addBoard, onImport, onExport,
 
   if (!board) return <div className="empty-state"><Archive size={30} /><h2>还没有看板</h2><p>导入浏览器书签或创建一个新的工作看板。</p><button className="primary-button" onClick={() => addBoard()}><Plus size={16} />创建看板</button></div>
 
-  return <div className="content-wrap">
+  return <div className="content-wrap" onClickCapture={drag.suppressClick}>
     <div className="page-heading">
       <div><div className="eyebrow"><span className="eyebrow-dot" />COLLECTIONS</div><h1>书签看板</h1><p>把浏览器里散落的链接，整理成可以快速行动的工作台。</p></div>
       <div className="heading-actions"><button className="ghost-button" onClick={onImport}><FileUp size={16} />导入书签</button><button className="ghost-button" onClick={() => { setNewLink({ title: '', url: '', groupId: activeGroupId === 'all' ? board.groups[0]?.id ?? '' : activeGroupId }); setShowQuickAdd(true) }}><Link2 size={15} />添加链接</button><button className="ghost-button" onClick={() => board && onExport(board)} title="导出为浏览器可导入的 HTML"><FileDown size={16} />导出当前</button><button className="ghost-button" onClick={onExportAll} title="把所有看板导出为浏览器可导入的 HTML"><Archive size={15} />导出全部</button><button className="ghost-button" onClick={onExportBackup} title="导出 Orbit Workbench JSON 备份"><CloudDownload size={15} />备份 JSON</button><button className="primary-button" onClick={openBoardAdd}><Plus size={16} />新建看板</button></div>
     </div>
 
     <div className="workspace-grid">
-      <aside className={`collection-sidebar ${draggedLink ? 'is-dragging' : ''}`}>
+      <aside className={`collection-sidebar ${drag.item ? 'is-dragging' : ''}`}>
         <div className="side-section-header"><span>我的看板 <b>{boards.length}</b></span><button className="icon-button tiny" onClick={openBoardAdd} aria-label="新建看板"><Plus size={15} /></button></div>
-        {draggedLink && <div className="sidebar-drop-hint"><GripVertical size={14} /><div><strong>移动链接</strong><span>{dropPath ? `松开移入：${dropPath}` : '拖到高亮分组；悬停展开子分组'}</span></div></div>}
         <div className="board-tree">
           {boards.map((item) => <div key={item.id} className="tree-item-wrap">
-            <div className={`tree-item ${item.id === board.id ? 'selected' : ''}`} onClick={() => { setActiveBoardId(item.id); setActiveGroupId('all'); setTagFilters([]) }}>
+            <div className={`tree-item drag-sort-row ${item.id === board.id ? 'selected' : ''} ${dropClassName(drag.target, { kind: 'board', id: item.id })} ${isSameDragItem(drag.item, { kind: 'board', id: item.id }) ? 'drag-source' : ''}`} data-board-id={item.id} draggable onDragStart={(event) => drag.start(event, { kind: 'board', id: item.id }, `看板 · ${item.name}`)} onDragEnd={drag.finish}
+              onDragOver={(event) => { const target: WorkspaceDropTarget = drag.item?.kind === 'board' ? rowDropTarget(event, { kind: 'board', id: item.id }) : { kind: 'board', id: item.id, position: 'inside' }; drag.over(event, canDrop(target) ? target : null) }} onDragLeave={drag.leave}
+              onDrop={(event) => applyDrop(event, drag.item?.kind === 'board' ? rowDropTarget(event, { kind: 'board', id: item.id }) : { kind: 'board', id: item.id, position: 'inside' })} onClick={() => { setActiveBoardId(item.id); setActiveGroupId('all'); setTagFilters([]) }}>
               <button className="disclosure" onClick={(event) => { event.stopPropagation(); setExpandedBoards((current) => ({ ...current, [item.id]: !current[item.id] })) }}>{expandedBoards[item.id] ? <ChevronDown size={14} /> : <ChevronRight size={14} />}</button>
-              <FolderOpen size={16} className="tree-folder" /> <span>{item.name}</span><b>{item.links.length}</b><span className="tree-item-actions"><button className="icon-button tiny" onClick={(event) => { event.stopPropagation(); openBoardRename(item) }} aria-label={`重命名看板 ${item.name}`} title="重命名看板"><Pencil size={12} /></button><button className="icon-button tiny danger-hover" onClick={(event) => { event.stopPropagation(); if (boards.length <= 1) notify('至少保留一个看板'); else setDeletingBoardId(item.id) }} aria-label={`删除看板 ${item.name}`} title="删除看板"><Trash2 size={12} /></button></span>
+              <FolderOpen size={16} className="tree-folder" /> <span>{item.name}</span><b>{item.links.length}</b><span className="tree-item-actions"><button className="icon-button tiny" onClick={(event) => { event.stopPropagation(); openBoardRename(item) }} aria-label={`重命名看板 ${item.name}`} title="重命名看板"><Pencil size={12} /></button><button className="icon-button tiny danger-hover" onClick={(event) => { event.stopPropagation(); if (boards.length <= 1) notify('至少保留一个看板'); else setDeletingBoardId(item.id) }} aria-label={`删除看板 ${item.name}`} title="删除看板"><Trash2 size={12} /></button></span><button className="sort-drag-handle" draggable data-drag-handle aria-label={`拖动看板 ${item.name}`} title="拖动调整看板顺序"><GripVertical size={14} /></button>
             </div>
-            {expandedBoards[item.id] && <BookmarkGroupTree board={item} activeGroupId={item.id === board.id ? activeGroupId : ''} dragging={Boolean(draggedLink)} dropTarget={dragOverTarget} onTarget={setDragOverTarget} onSelect={(groupId) => { setActiveBoardId(item.id); setActiveGroupId(groupId); setTagFilters([]) }} onEdit={(group) => openGroupRename(group, item.id)} onDrop={(groupId) => moveLink(item.id, groupId)} />}
+            {expandedBoards[item.id] && <BookmarkGroupTree board={item} activeGroupId={item.id === board.id ? activeGroupId : ''} dragItem={drag.item} dropTarget={drag.target} canDrop={canDrop} onTarget={drag.over} onLeave={drag.leave} onDragStart={(event, group) => drag.start(event, { kind: 'group', boardId: item.id, id: group.id }, `分组 · ${group.name}`)} onDragEnd={drag.finish} onSelect={(groupId) => { setActiveBoardId(item.id); setActiveGroupId(groupId); setTagFilters([]) }} onEdit={(group) => openGroupRename(group, item.id)} onDrop={applyDrop} />}
           </div>)}
         </div>
         <button className="add-inline" onClick={openBoardAdd}><Plus size={14} />添加看板</button>
-        <div className="side-helper"><Sparkles size={15} /><div><strong>小提示</strong><p>拖拽链接到左侧分组即可整理。</p></div></div>
+        <div className="side-helper drag-status" role="status" aria-live="polite"><GripVertical size={15} /><div><strong>{drag.item ? '松开放置' : '拖拽整理'}</strong><p>{drag.item ? dropHint : '看板上下排序；分组边缘排序、中央嵌套；链接可排序或归类。'}</p></div></div>
       </aside>
 
       <section className="board-stage">
@@ -829,9 +879,9 @@ function BookmarksView({ boards, setBoards, query, addBoard, onImport, onExport,
         <nav className="folder-breadcrumb" aria-label="当前分组路径"><button aria-current={!activeGroupRow ? 'location' : undefined} onClick={() => setActiveGroupId('all')}>全部链接</button>{activeGroupRow && [...activeGroupRow.ancestors, activeGroupRow.group.id].map((id) => <span key={id}><ChevronRight size={11} /><button aria-current={id === activeGroupId ? 'location' : undefined} onClick={() => setActiveGroupId(id)}>{board.groups.find((group) => group.id === id)?.name}</button></span>)}<small>{activeGroupRow ? '包含所有子分组的链接' : `${board.groups.length} 个分组，支持多层目录`}</small></nav>
         <div className="tag-filter-row"><div className="tag-filter-label"><ListFilter size={14} />标签筛选</div><details className="tag-filter-dropdown"><summary className="tag-filter-trigger"><span>{tagFilters.length ? `已选 ${tagFilters.length} 个标签` : '全部标签'}</span><ChevronDown size={13} /></summary><div className="tag-filter-menu" role="group" aria-label="标签筛选"><label className="tag-filter-option"><input type="checkbox" checked={!tagFilters.length} onChange={() => setTagFilters([])} />全部标签</label>{allTags.map((tag) => <label className="tag-filter-option" key={tag}><input type="checkbox" checked={tagFilters.includes(tag)} onChange={() => setTagFilters((current) => current.includes(tag) ? current.filter((item) => item !== tag) : [...current, tag])} /><span className="tag-filter-option-dot" />{tag}</label>)}{tagFilters.length > 0 && <><div className="tag-filter-hint">多选标签按全部匹配</div><button className="tag-filter-clear" onClick={() => setTagFilters([])}><X size={12} />清除标签筛选</button></>}</div></details>{tagFilters.length > 0 && <div className="active-tag-summary" aria-label="已选择的标签筛选">{tagFilters.slice(0, 2).map((tag) => <span key={tag}>{tag}</span>)}{tagFilters.length > 2 && <b>+{tagFilters.length - 2}</b>}</div>}{hasActiveFilters && <button className="clear-filter-button" onClick={clearFilters}><X size={12} />清除筛选</button>}<div className={`selection-toolbar ${selectionMode ? 'is-active' : ''}`}><button className={`toolbar-button ${selectionMode ? 'active' : ''}`} onClick={() => { setSelectionMode((current) => !current); if (selectionMode) setSelectedLinkIds([]) }}><Check size={14} />{selectionMode ? '退出选择' : '批量管理'}</button>{selectionMode && <div className="selection-actions"><button className="selection-toggle" onClick={toggleSelectVisible}>{visibleLinks.length && visibleLinks.every((link) => selectedLinkIds.includes(link.id)) ? '取消全选' : '选择当前'}<span>{selectedLinkIds.length ? `已选 ${selectedLinkIds.length}` : ''}</span></button><button className="toolbar-button" disabled={!selectedLinkIds.length} onClick={openBatchMove}><Folder size={14} />批量移动</button><button className="toolbar-button" disabled={!selectedLinkIds.length} onClick={() => setTagEditorLinkIds(selectedLinkIds)}><Bookmark size={14} />批量标签</button><button className="toolbar-button danger-action" disabled={!selectedLinkIds.length} onClick={batchDelete}><Trash2 size={14} />批量删除</button></div>}</div></div>
 
-        {visibleLinks.length ? <div className="link-list">{visibleLinks.map((link) => <div key={link.id} className={`link-select-row ${selectedLinkIds.includes(link.id) ? 'selected' : ''}`}>{selectionMode && <input type="checkbox" className="link-select-checkbox" checked={selectedLinkIds.includes(link.id)} onChange={() => toggleLinkSelection(link.id)} aria-label={`选择 ${link.title}`} /> }<LinkRow link={link} groupOptions={groupRows} group={board.groups.find((group) => group.id === link.groupId)} isDragging={draggedLink?.linkId === link.id && draggedLink.boardId === board.id} onUpdate={(patch) => updateBoard((current) => ({ ...current, updatedAt: new Date().toISOString(), links: current.links.map((item) => item.id === link.id ? { ...item, ...patch } : item) }))} onCopy={onCopy} onDelete={() => { updateBoard((current) => ({ ...current, links: current.links.filter((item) => item.id !== link.id) })); setSelectedLinkIds((current) => current.filter((id) => id !== link.id)); notify('链接已删除') }} onEditTags={() => setTagEditorLinkIds([link.id])} onDragStart={(event) => { const target = event.target as HTMLElement; if (target.closest('input, button, select, textarea')) { event.preventDefault(); return } dragPreviewRef.current?.remove(); const preview = document.createElement('div'); preview.className = 'drag-preview'; preview.textContent = link.title; document.body.appendChild(preview); dragPreviewRef.current = preview; event.dataTransfer.setDragImage(preview, 18, 18); event.dataTransfer.effectAllowed = 'move'; event.dataTransfer.setData('text/plain', `${board.id}:${link.id}`); setDraggedLink({ boardId: board.id, linkId: link.id }) }} onDragEnd={() => { dragPreviewRef.current?.remove(); dragPreviewRef.current = null; setDraggedLink(null); setDragOverTarget(null) }} /></div>)}</div> : <div className="empty-board"><Search size={24} /><h3>没有匹配的链接</h3><p>试试搜索其他关键词，或切换标签筛选。</p><button className="ghost-button" onClick={clearFilters}>清除筛选</button></div>}
+        {visibleLinks.length ? <div className="link-list">{visibleLinks.map((link) => <div key={link.id} className={`link-select-row drag-sort-row ${selectedLinkIds.includes(link.id) ? 'selected' : ''} ${dropClassName(drag.target, { kind: 'link', boardId: board.id, id: link.id })}`} data-link-id={link.id} onDragOver={(event) => { const target = rowDropTarget(event, { kind: 'link', boardId: board.id, id: link.id }); drag.over(event, canDrop(target) ? target : null) }} onDragLeave={drag.leave} onDrop={(event) => applyDrop(event, rowDropTarget(event, { kind: 'link', boardId: board.id, id: link.id }))}>{selectionMode && <input type="checkbox" className="link-select-checkbox" checked={selectedLinkIds.includes(link.id)} onChange={() => toggleLinkSelection(link.id)} aria-label={`选择 ${link.title}`} /> }<LinkRow link={link} groupOptions={groupRows} group={board.groups.find((group) => group.id === link.groupId)} isDragging={isSameDragItem(drag.item, { kind: 'link', id: link.id, boardId: board.id })} onUpdate={(patch) => updateBoard((current) => ({ ...current, updatedAt: new Date().toISOString(), links: current.links.map((item) => item.id === link.id ? { ...item, ...patch } : item) }))} onCopy={onCopy} onDelete={() => { updateBoard((current) => ({ ...current, links: current.links.filter((item) => item.id !== link.id) })); setSelectedLinkIds((current) => current.filter((id) => id !== link.id)); notify('链接已删除') }} onEditTags={() => setTagEditorLinkIds([link.id])} onDragStart={(event) => drag.start(event, { kind: 'link', boardId: board.id, id: link.id }, `链接 · ${link.title}`)} onDragEnd={drag.finish} /></div>)}</div> : <div className="empty-board"><Search size={24} /><h3>没有匹配的链接</h3><p>试试搜索其他关键词，或切换标签筛选。</p><button className="ghost-button" onClick={clearFilters}>清除筛选</button></div>}
 
-        {draggedLink && <p className="folder-drop-path">{dropPath ? `松开后移入：${dropPath}` : '拖到左侧分组，悬停在折叠的分组上可展开子分组。'}</p>}
+        {drag.item && <p className="folder-drop-path">{dropHint}</p>}
       </section>
 
       <aside className="board-inspector">
@@ -876,7 +926,7 @@ function LinkRow({ link, group, groupOptions, isDragging, onUpdate, onCopy, onDe
     <div className="row-content"><div className="link-title-edit"><input className="link-inline-title" value={draft.title} onChange={(event) => setDraft((current) => ({ ...current, title: event.target.value }))} onBlur={() => commit('title')} onKeyDown={(event) => { if (isCommittedEnter(event)) event.currentTarget.blur() }} aria-label="链接名称" /><ExternalLink size={14} /></div><input className="link-inline-url" value={draft.url} onChange={(event) => setDraft((current) => ({ ...current, url: event.target.value }))} onBlur={() => commit('url')} onKeyDown={(event) => { if (isCommittedEnter(event)) event.currentTarget.blur() }} aria-label="链接地址" /><input className="link-inline-description" value={draft.description} onChange={(event) => setDraft((current) => ({ ...current, description: event.target.value }))} onBlur={() => commit('description')} placeholder="添加备注…" aria-label="链接备注" /><div className="link-host">{hostname}</div></div>
     <span className="group-label row-group" title={groupPath}><span className="group-dot" style={{ background: group?.color }} /><select aria-label={`移动 ${link.title} 到分组`} value={link.groupId} onChange={(event) => onUpdate({ groupId: event.target.value })}>{!groupOptions.some((item) => item.group.id === link.groupId) && <option value={link.groupId}>未分组</option>}{groupOptions.map(({ group: option, path }) => <option value={option.id} key={option.id}>{path}</option>)}</select></span>
     <button className="mini-tags row-tags tag-trigger" onClick={(event) => { event.stopPropagation(); onEditTags() }} aria-label={`编辑 ${link.title} 标签`} title="点击管理标签">{link.tags.length ? <>{visibleTags.map((tag) => <span key={tag}>{tag}</span>)}{hiddenTagCount > 0 && <span className="tag-overflow">+{hiddenTagCount}</span>}</> : <span className="tag-empty">+ 标签</span>}</button>
-    <div className="row-actions"><button className="icon-button tiny" onClick={(event) => { event.stopPropagation(); onEditTags() }} aria-label={`编辑 ${link.title} 标签`} title="管理标签"><Bookmark size={15} /></button><button className="icon-button tiny" onClick={() => onCopy(link.url, '链接已复制')} aria-label="复制链接"><Copy size={16} /></button><button className="icon-button tiny" onClick={openLink} aria-label="打开链接"><ArrowUpRight size={17} /></button><button className="icon-button tiny danger-hover" onClick={onDelete} aria-label="删除链接"><Trash2 size={16} /></button><GripVertical size={17} className="drag-handle" /></div>
+    <div className="row-actions"><button className="icon-button tiny" onClick={(event) => { event.stopPropagation(); onEditTags() }} aria-label={`编辑 ${link.title} 标签`} title="管理标签"><Bookmark size={15} /></button><button className="icon-button tiny" onClick={() => onCopy(link.url, '链接已复制')} aria-label="复制链接"><Copy size={16} /></button><button className="icon-button tiny" onClick={openLink} aria-label="打开链接"><ArrowUpRight size={17} /></button><button className="icon-button tiny danger-hover" onClick={onDelete} aria-label="删除链接"><Trash2 size={16} /></button><button className="sort-drag-handle" draggable data-drag-handle aria-label={`拖动链接 ${link.title}`} title="拖动调整顺序或分组"><GripVertical size={17} /></button></div>
   </article>
 }
 
@@ -911,16 +961,14 @@ function KubeconfigView({ configs, setConfigs, groups, setGroups, commands, setC
   const [context, setContext] = useState('')
   const [namespace, setNamespace] = useState('default')
   const [extraArgs, setExtraArgs] = useState('')
-  const [sortMode, setSortMode] = useState<ConfigSort>('created')
+  const [sortMode, setSortMode] = usePersistentState<ConfigSort>('orbit-kube-sort', 'manual')
   const [showAdd, setShowAdd] = useState(false)
   const [importBusy, setImportBusy] = useState(false)
   const [showGroupAdd, setShowGroupAdd] = useState(false)
   const [showCommandManager, setShowCommandManager] = useState(false)
   const [detailsId, setDetailsId] = useState<string | null>(null)
   const [newGroup, setNewGroup] = useState({ name: '', color: kubeGroupPalette[2] })
-  const [draggedConfig, setDraggedConfig] = useState<string | null>(null)
-  const [dragOverGroupId, setDragOverGroupId] = useState<string | null>(null)
-  const kubeDragPreviewRef = useRef<HTMLDivElement | null>(null)
+  const drag = useWorkspaceDrag()
   const [envNameDraft, setEnvNameDraft] = useState('')
   const [selectedConfigIds, setSelectedConfigIds] = useState<string[]>([])
   const [groupEditor, setGroupEditor] = useState<KubeGroup | null>(null)
@@ -934,6 +982,7 @@ function KubeconfigView({ configs, setConfigs, groups, setGroups, commands, setC
     return (selectedGroup === 'all' || config.groupId === selectedGroup) && matchesTags && (!query || text.includes(query.toLowerCase()))
   })
   const displayedConfigs = useMemo(() => [...filteredConfigs].sort((a, b) => {
+    if (sortMode === 'manual') return 0
     if (sortMode === 'name') return a.name.localeCompare(b.name, 'zh-CN')
     return (b.createdAt ? new Date(b.createdAt).getTime() : 0) - (a.createdAt ? new Date(a.createdAt).getTime() : 0)
   }), [filteredConfigs, sortMode])
@@ -1014,13 +1063,41 @@ function KubeconfigView({ configs, setConfigs, groups, setGroups, commands, setC
     notify('分组已删除，配置已移入其他分组')
   }
 
-  const moveConfig = (groupId: string) => {
-    if (!draggedConfig) return
-    updateConfig(draggedConfig, (item) => ({ ...item, groupId, updatedAt: '刚刚' }))
-    setDraggedConfig(null)
-    setDragOverGroupId(null)
-    notify('配置已移动')
+  const canDrop = (target: WorkspaceDropTarget) => {
+    if (!drag.item || isSameDragItem(drag.item, target)) return false
+    return drag.item.kind === 'kube-group' ? target.kind === 'kube-group' && target.position !== 'inside' : drag.item.kind === 'config' && (target.kind === 'config' || target.kind === 'kube-group')
   }
+  const applyDrop = (event: React.DragEvent<HTMLElement>, target: WorkspaceDropTarget) => {
+    if (!drag.item) return
+    event.preventDefault()
+    event.stopPropagation()
+    const source = drag.item
+    if (!canDrop(target)) { drag.finish(); return }
+    try {
+      if (source.kind === 'kube-group' && target.position !== 'inside') {
+        setGroups(reorderItems(groups, source.id, target.id, target.position))
+        notify('环境分组顺序已更新')
+      } else if (source.kind === 'config') {
+        const groupId = target.kind === 'kube-group' ? target.id : configs.find((item) => item.id === target.id)?.groupId
+        if (!groupId || !groups.some((group) => group.id === groupId)) throw new Error('目标分组不存在')
+        if (target.kind === 'config' && target.position !== 'inside') {
+          const ordered = orderVisibleItems(configs, displayedConfigs.map((item) => item.id))
+          setConfigs(placeGroupedItem(ordered, source.id, target.id, target.position))
+          setSortMode('manual')
+          notify(sortMode === 'manual' ? '配置顺序已更新' : '配置顺序已更新，已切换为手动排序')
+        } else {
+          setConfigs((current) => current.map((config) => config.id === source.id ? { ...config, groupId, updatedAt: new Date().toISOString() } : config))
+          setSelectedGroup(groupId)
+          setConfigTagFilters([])
+          notify('配置已移入目标分组')
+        }
+        setSelectedId(source.id)
+      }
+    } catch (error) { notify(error instanceof Error ? error.message : '无法移动') }
+    drag.finish()
+  }
+  const dropTargetName = drag.target?.kind === 'kube-group' ? groups.find((group) => group.id === drag.target?.id)?.name : configs.find((config) => config.id === drag.target?.id)?.name
+  const dropHint = drag.target ? `${drag.target.position === 'inside' ? '移入' : drag.target.position === 'before' ? '插入到前面' : '插入到后面'}：${dropTargetName}` : '分组之间可排序；配置可排序或拖到分组归类'
 
   const toggleConfigSelection = (id: string) => {
     setSelectedConfigIds((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id])
@@ -1111,12 +1188,12 @@ function KubeconfigView({ configs, setConfigs, groups, setGroups, commands, setC
     notify('配置详情已保存')
   }
 
-  return <div className="content-wrap kube-page">
+  return <div className="content-wrap kube-page" onClickCapture={drag.suppressClick}>
     <div className="page-heading"><div><div className="eyebrow"><span className="eyebrow-dot green" />CLUSTER ACCESS</div><h1>Kubeconfig 管理</h1><p>把散落在不同目录的集群入口，整理成一组可复制的命令。</p></div><div className="heading-actions"><button className="ghost-button" onClick={addKubeGroup}><Plus size={16} />新建分组</button><button className="primary-button" onClick={() => setShowAdd(true)}><Plus size={16} />添加配置</button></div></div>
     <div className="kube-summary"><div><div className="summary-icon blue"><Database size={18} /></div><div><strong>{configs.length}</strong><span>个配置文件</span></div></div><div><div className="summary-icon green"><ShieldCheck size={18} /></div><div><strong>{groups.length}</strong><span>个环境分组</span></div></div><div><div className="summary-icon orange"><Command size={18} /></div><div><strong>{commands.length}</strong><span>条常用命令</span></div></div><div className="summary-tip"><Sparkles size={16} /><span>选择配置后，命令会自动带上 KUBECONFIG 和 Context</span></div></div>
     <div className="kube-grid">
-      <aside className={`kube-groups panel ${draggedConfig ? 'is-dragging' : ''}`}><div className="panel-title"><span>环境分组</span><button className="icon-button tiny" onClick={addKubeGroup} aria-label="新建 kubeconfig 分组"><Plus size={15} /></button></div>{draggedConfig && <div className="group-drop-banner"><GripVertical size={13} />拖到高亮分组后松开</div>}<button className={`kube-group-item ${selectedGroup === 'all' ? 'active' : ''}`} onClick={() => setSelectedGroup('all')}><div className="group-icon"><HardDrive size={15} /></div><span>全部配置</span><b>{configs.length}</b></button>{groups.map((group) => <div className={`kube-group-item ${selectedGroup === group.id ? 'active' : ''} ${dragOverGroupId === group.id ? 'drop-target' : ''}`} key={group.id} role="button" tabIndex={0} onClick={() => setSelectedGroup(group.id)} onKeyDown={(event) => { if ((isCommittedEnter(event)) || event.key === ' ') { event.preventDefault(); setSelectedGroup(group.id) } }} onDragOver={(event) => { event.preventDefault(); setDragOverGroupId(group.id) }} onDragEnter={() => setDragOverGroupId(group.id)} onDragLeave={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node)) setDragOverGroupId(null) }} onDrop={(event) => { event.preventDefault(); moveConfig(group.id) }} aria-label={`分组 ${group.name}，拖到此处归类`}><div className="group-icon" style={{ color: group.color, background: `${group.color}18` }}><Folder size={15} /></div><span>{group.name}{dragOverGroupId === group.id && <small>松开归类</small>}</span><b>{configs.filter((config) => config.groupId === group.id).length}</b><div className="group-item-actions"><button className="icon-button tiny" onClick={(event) => { event.stopPropagation(); setGroupEditor(group) }} aria-label={`重命名 ${group.name}`} title="重命名分组"><Pencil size={12} /></button><button className="icon-button tiny danger-hover" onClick={(event) => { event.stopPropagation(); setConfirmAction({ type: 'group', groupId: group.id }) }} aria-label={`删除 ${group.name}`} title="删除分组"><Trash2 size={12} /></button></div></div>)}<button className="group-drop-hint" onClick={addKubeGroup}><Plus size={14} />新建分组</button></aside>
-      <section className="config-list panel"><div className="config-list-header"><div className="panel-title"><span>配置文件 <b>{filteredConfigs.length}</b></span><span className="config-list-hint">拖动可调整分组</span>{hasActiveConfigFilter && <button className="clear-filter-button" onClick={clearConfigFilters}><X size={12} />清除筛选</button>}</div><div className="config-list-controls"><div className={`config-selection-toolbar ${selectedConfigIds.length ? 'has-selection' : ''}`}><label className="select-all-control"><input type="checkbox" checked={displayedConfigs.length > 0 && displayedConfigs.every((config) => selectedConfigIds.includes(config.id))} onChange={toggleVisibleSelection} aria-label="全选当前配置" />{selectedConfigIds.length ? `已选 ${selectedConfigIds.length}` : '全选'}</label>{selectedConfigIds.length > 0 && <><select aria-label="批量移动配置" value="" onChange={(event) => { if (event.target.value) moveSelectedConfigs(event.target.value) }}><option value="">批量移动</option>{groups.map((group) => <option value={group.id} key={group.id}>{group.name}</option>)}</select><button className="inline-control" onClick={() => setTagEditorConfigIds(selectedConfigIds)}><Bookmark size={13} />标签</button><button className="inline-control danger-control" onClick={deleteSelectedConfigs}><Trash2 size={13} />删除</button></>}</div><details className="config-tag-filter"><summary><ListFilter size={13} />标签{configTagFilters.length ? <b>{configTagFilters.length}</b> : null}<ChevronDown size={12} /></summary><div className="config-tag-menu"><div className="config-tag-menu-head"><span>选择标签</span>{configTagFilters.length > 0 && <button onClick={() => setConfigTagFilters([])}>清除</button>}</div>{availableConfigTags.length ? availableConfigTags.map((tag) => <label key={tag}><input type="checkbox" checked={configTagFilters.includes(tag)} onChange={() => setConfigTagFilters((current) => current.includes(tag) ? current.filter((item) => item !== tag) : [...current, tag])} /> <span>{tag}</span></label>) : <span className="config-tag-empty">暂无标签</span>}<p>多个标签同时选择时按全部匹配。</p></div></details><label className="sort-control"><ArrowDownUp size={13} /><span>排序</span><select aria-label="配置排序" value={sortMode} onChange={(event) => setSortMode(event.target.value as ConfigSort)}><option value="created">创建时间</option><option value="name">名称</option></select></label></div></div>{displayedConfigs.map((config) => <div key={config.id} className={`config-row ${selected?.id === config.id ? 'active' : ''} ${draggedConfig === config.id ? 'dragging' : ''} ${selectedConfigIds.includes(config.id) ? 'checked' : ''}`} role="button" tabIndex={0} onClick={() => setSelectedId(config.id)} onKeyDown={(event) => { if (isCommittedEnter(event)) setSelectedId(config.id) }} draggable onDragStart={(event) => { const target = event.target as HTMLElement; if (target.closest('button,input,select')) { event.preventDefault(); return } kubeDragPreviewRef.current?.remove(); const preview = document.createElement('div'); preview.className = 'drag-preview kube-drag-preview'; preview.textContent = `${config.name} · ${displayEnvName(config)}`; document.body.appendChild(preview); kubeDragPreviewRef.current = preview; event.dataTransfer.setDragImage(preview, 18, 18); event.dataTransfer.effectAllowed = 'move'; event.dataTransfer.setData('text/plain', config.id); setDraggedConfig(config.id); setDragOverGroupId(null) }} onDragEnd={() => { kubeDragPreviewRef.current?.remove(); kubeDragPreviewRef.current = null; setDraggedConfig(null); setDragOverGroupId(null) }}><input className="config-select-checkbox" type="checkbox" checked={selectedConfigIds.includes(config.id)} onChange={() => toggleConfigSelection(config.id)} onClick={(event) => event.stopPropagation()} aria-label={`选择 ${config.name}`} /><div className="config-file-icon"><KeyRound size={17} /></div><div className="config-row-main"><strong>{config.name}</strong><span>{config.path}</span><div className="config-row-meta"><span className="config-env-pill">环境变量：{displayEnvName(config)}</span><span className="context-pill">{config.context}</span><button className="config-tags-trigger" onClick={(event) => { event.stopPropagation(); setTagEditorConfigIds([config.id]) }} aria-label={`编辑 ${config.name} 标签`} title="点击管理标签">{config.tags.length ? <>{config.tags.slice(0, 2).map((tag) => <em key={tag}>{tag}</em>)}{config.tags.length > 2 && <em className="tag-overflow">+{config.tags.length - 2}</em>}</> : <em className="tag-empty">+ 标签</em>}</button></div></div><button className="config-detail-button" onClick={(event) => { event.stopPropagation(); setDetailsId(config.id) }} aria-label={`查看 ${config.name} 详情`} title="查看配置详情"><Info size={14} /></button><ChevronRight size={15} className="row-chevron" /></div>) }{!displayedConfigs.length && <div className="panel-empty"><Search size={22} /><p>没有找到匹配的配置</p></div>}<button className="add-config-row" onClick={() => setShowAdd(true)}><Plus size={15} />添加一个 kubeconfig</button></section>
+      <aside className={`kube-groups panel ${drag.item ? 'is-dragging' : ''}`}><div className="panel-title"><span>环境分组</span><button className="icon-button tiny" onClick={addKubeGroup} aria-label="新建 kubeconfig 分组"><Plus size={15} /></button></div><button className={`kube-group-item ${selectedGroup === 'all' ? 'active' : ''}`} onClick={() => setSelectedGroup('all')}><div className="group-icon"><HardDrive size={15} /></div><span>全部配置</span><b>{configs.length}</b></button>{groups.map((group) => <div className={`kube-group-item drag-sort-row ${selectedGroup === group.id ? 'active' : ''} ${dropClassName(drag.target, { kind: 'kube-group', id: group.id })} ${isSameDragItem(drag.item, { kind: 'kube-group', id: group.id }) ? 'drag-source' : ''}`} data-kube-group-id={group.id} draggable onDragStart={(event) => drag.start(event, { kind: 'kube-group', id: group.id }, `环境分组 · ${group.name}`)} onDragEnd={drag.finish} key={group.id} role="button" tabIndex={0} onClick={() => setSelectedGroup(group.id)} onKeyDown={(event) => { if ((isCommittedEnter(event)) || event.key === ' ') { event.preventDefault(); setSelectedGroup(group.id) } }} onDragOver={(event) => { const target: WorkspaceDropTarget = drag.item?.kind === 'kube-group' ? rowDropTarget(event, { kind: 'kube-group', id: group.id }) : { kind: 'kube-group', id: group.id, position: 'inside' }; drag.over(event, canDrop(target) ? target : null) }} onDragLeave={drag.leave} onDrop={(event) => applyDrop(event, drag.item?.kind === 'kube-group' ? rowDropTarget(event, { kind: 'kube-group', id: group.id }) : { kind: 'kube-group', id: group.id, position: 'inside' })} aria-label={`分组 ${group.name}，拖到此处归类`}><div className="group-icon" style={{ color: group.color, background: `${group.color}18` }}><Folder size={15} /></div><span>{group.name}</span><b>{configs.filter((config) => config.groupId === group.id).length}</b><div className="group-item-actions"><button className="icon-button tiny" onClick={(event) => { event.stopPropagation(); setGroupEditor(group) }} aria-label={`重命名 ${group.name}`} title="重命名分组"><Pencil size={12} /></button><button className="icon-button tiny danger-hover" onClick={(event) => { event.stopPropagation(); setConfirmAction({ type: 'group', groupId: group.id }) }} aria-label={`删除 ${group.name}`} title="删除分组"><Trash2 size={12} /></button></div><button className="sort-drag-handle" draggable data-drag-handle aria-label={`拖动环境分组 ${group.name}`} title="拖动调整分组顺序"><GripVertical size={14} /></button></div>)}<button className="group-drop-hint" onClick={addKubeGroup}><Plus size={14} />新建分组</button>{drag.item && <div className="group-drop-banner drag-status" role="status" aria-live="polite"><GripVertical size={13} />{dropHint}</div>}</aside>
+      <section className="config-list panel"><div className="config-list-header"><div className="panel-title"><span>配置文件 <b>{filteredConfigs.length}</b></span><span className="config-list-hint">拖动排序或调整分组</span>{hasActiveConfigFilter && <button className="clear-filter-button" onClick={clearConfigFilters}><X size={12} />清除筛选</button>}</div><div className="config-list-controls"><div className={`config-selection-toolbar ${selectedConfigIds.length ? 'has-selection' : ''}`}><label className="select-all-control"><input type="checkbox" checked={displayedConfigs.length > 0 && displayedConfigs.every((config) => selectedConfigIds.includes(config.id))} onChange={toggleVisibleSelection} aria-label="全选当前配置" />{selectedConfigIds.length ? `已选 ${selectedConfigIds.length}` : '全选'}</label>{selectedConfigIds.length > 0 && <><select aria-label="批量移动配置" value="" onChange={(event) => { if (event.target.value) moveSelectedConfigs(event.target.value) }}><option value="">批量移动</option>{groups.map((group) => <option value={group.id} key={group.id}>{group.name}</option>)}</select><button className="inline-control" onClick={() => setTagEditorConfigIds(selectedConfigIds)}><Bookmark size={13} />标签</button><button className="inline-control danger-control" onClick={deleteSelectedConfigs}><Trash2 size={13} />删除</button></>}</div><details className="config-tag-filter"><summary><ListFilter size={13} />标签{configTagFilters.length ? <b>{configTagFilters.length}</b> : null}<ChevronDown size={12} /></summary><div className="config-tag-menu"><div className="config-tag-menu-head"><span>选择标签</span>{configTagFilters.length > 0 && <button onClick={() => setConfigTagFilters([])}>清除</button>}</div>{availableConfigTags.length ? availableConfigTags.map((tag) => <label key={tag}><input type="checkbox" checked={configTagFilters.includes(tag)} onChange={() => setConfigTagFilters((current) => current.includes(tag) ? current.filter((item) => item !== tag) : [...current, tag])} /> <span>{tag}</span></label>) : <span className="config-tag-empty">暂无标签</span>}<p>多个标签同时选择时按全部匹配。</p></div></details><label className="sort-control"><ArrowDownUp size={13} /><span>排序</span><select aria-label="配置排序" value={sortMode} onChange={(event) => setSortMode(event.target.value as ConfigSort)}><option value="manual">手动排序</option><option value="created">创建时间</option><option value="name">名称</option></select></label></div></div>{displayedConfigs.map((config) => <div key={config.id} className={`config-row drag-sort-row ${selected?.id === config.id ? 'active' : ''} ${isSameDragItem(drag.item, { kind: 'config', id: config.id }) ? 'dragging' : ''} ${selectedConfigIds.includes(config.id) ? 'checked' : ''} ${dropClassName(drag.target, { kind: 'config', id: config.id })}`} data-config-id={config.id} onDragOver={(event) => { const target = rowDropTarget(event, { kind: 'config', id: config.id }); drag.over(event, canDrop(target) ? target : null) }} onDragLeave={drag.leave} onDrop={(event) => applyDrop(event, rowDropTarget(event, { kind: 'config', id: config.id }))} role="button" tabIndex={0} onClick={() => setSelectedId(config.id)} onKeyDown={(event) => { if (isCommittedEnter(event)) setSelectedId(config.id) }} draggable onDragStart={(event) => drag.start(event, { kind: 'config', id: config.id }, `配置 · ${config.name}`)} onDragEnd={drag.finish}><input className="config-select-checkbox" type="checkbox" checked={selectedConfigIds.includes(config.id)} onChange={() => toggleConfigSelection(config.id)} onClick={(event) => event.stopPropagation()} aria-label={`选择 ${config.name}`} /><div className="config-file-icon"><KeyRound size={17} /></div><div className="config-row-main"><strong>{config.name}</strong><span>{config.path}</span><div className="config-row-meta"><span className="config-env-pill">环境变量：{displayEnvName(config)}</span><span className="context-pill">{config.context}</span><button className="config-tags-trigger" onClick={(event) => { event.stopPropagation(); setTagEditorConfigIds([config.id]) }} aria-label={`编辑 ${config.name} 标签`} title="点击管理标签">{config.tags.length ? <>{config.tags.slice(0, 2).map((tag) => <em key={tag}>{tag}</em>)}{config.tags.length > 2 && <em className="tag-overflow">+{config.tags.length - 2}</em>}</> : <em className="tag-empty">+ 标签</em>}</button></div></div><button className="config-detail-button" onClick={(event) => { event.stopPropagation(); setDetailsId(config.id) }} aria-label={`查看 ${config.name} 详情`} title="查看配置详情"><Info size={14} /></button><button className="sort-drag-handle" draggable data-drag-handle aria-label={`拖动配置 ${config.name}`} title="拖动调整顺序或分组"><GripVertical size={15} /></button></div>) }{!displayedConfigs.length && <div className="panel-empty"><Search size={22} /><p>没有找到匹配的配置</p></div>}<button className="add-config-row" onClick={() => setShowAdd(true)}><Plus size={15} />添加一个 kubeconfig</button></section>
       <section className="command-panel panel"><div className="command-panel-header"><div><div className="panel-kicker"><Terminal size={14} />COMMAND BUILDER</div><h2>命令生成器</h2><p>点击配置后生成对应命令，可直接复制到终端。</p></div><div className="terminal-badge"><span />shell</div></div>{selected ? <><div className="selected-config"><div className="config-file-icon big"><KeyRound size={18} /></div><div className="selected-config-main"><span>当前配置</span><strong>{selected.name}</strong><small>{selected.path}</small><label className="selected-env-name"><span>环境变量名称</span><input aria-label="环境变量名称" value={envNameDraft} onChange={(event) => setEnvNameDraft(event.target.value)} onBlur={commitEnvName} onKeyDown={(event) => { if (isCommittedEnter(event)) { event.currentTarget.blur() } }} placeholder="例如 PRODUCTION" /></label></div><button className="icon-button tiny" onClick={() => setDetailsId(selected.id)} aria-label="查看配置详情" title="查看配置详情"><Info size={14} /></button><button className="icon-button tiny" onClick={() => onCopy(selected.path, '路径已复制')} aria-label="复制配置路径"><Copy size={14} /></button><button className="icon-button tiny danger-hover" onClick={deleteConfig} aria-label="删除配置"><Trash2 size={14} /></button></div><div className="command-form"><div className="command-label-row"><label htmlFor="command-template">常用命令</label><div><button className="inline-control" onClick={() => setShowCommandManager(true)}><SlidersHorizontal size={13} />管理命令</button><button className="inline-control" onClick={() => onDefaultCommandChange(templateId)}><Star size={13} fill={defaultCommandId === templateId ? 'currentColor' : 'none'} />{defaultCommandId === templateId ? '默认命令' : '设为默认'}</button></div></div><select id="command-template" aria-label="常用命令" value={templateId} onChange={(event) => setTemplateId(event.target.value)}>{commands.map((item) => <option value={item.id} key={item.id}>{item.name} · {item.command}</option>)}</select><div className="form-row"><label>Context<select aria-label="Context" value={context} onChange={(event) => changeContext(event.target.value)}>{contextOptions.length ? contextOptions.map((item) => <option value={item} key={item}>{item}</option>) : <option value="">未读取 context</option>}</select></label><label>命名空间<input value={namespace} onChange={(event) => setNamespace(event.target.value)} placeholder="default" /></label></div><label className="extra-args-field">附加参数<input value={extraArgs} onChange={(event) => setExtraArgs(event.target.value)} placeholder="例如 --watch 或 -l app=web" /></label></div><div className="command-preview"><div className="preview-header"><span>预览</span><button className="copy-command" onClick={() => onCopy(generatedCommand, '命令已复制')}><Copy size={14} />复制命令</button></div><pre><code>{generatedCommand.split('\n').map((line, index) => <span className="command-line" key={`${line}-${index}`}><b>{line}</b></span>)}</code></pre></div><div className="command-note"><ShieldCheck size={15} /><span>命令只在本地生成，不会执行或上传配置内容。</span></div></> : <div className="panel-empty"><KeyRound size={22} /><p>选择一个配置开始</p></div>}</section>
     </div>
     {showAdd && <Modal title="导入 kubeconfig" className="modal-wide kube-import-modal" onClose={() => { if (!importBusy) setShowAdd(false) }}><KubeImportPanel onBusyChange={setImportBusy} configs={configs} groups={groups} initialGroupId={selectedGroup} onClose={() => setShowAdd(false)} onImport={(files, options) => {

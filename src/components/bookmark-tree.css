@@ -11,8 +11,7 @@
 .folder-select small { flex-shrink: 0; color: var(--faint); font-size: 10px; }
 .folder-edit { width: 24px; height: 26px; opacity: 0; }
 .bookmark-folder-row:hover .folder-edit, .bookmark-folder-row:focus-within .folder-edit, .bookmark-folder-row.selected .folder-edit { opacity: 1; }
-.bookmark-folder-row.accepts-drop { min-height: 39px; border-style: dashed; border-color: rgba(111,140,255,.3); background: rgba(111,140,255,.04); }
-.bookmark-folder-row.is-drop-target { border: 2px solid var(--blue); padding-block: 2px; background: rgba(111,140,255,.18); color: var(--blue-soft); box-shadow: inset 3px 0 var(--blue); }
+.bookmark-folder-row.accepts-drop { border-style: dashed; border-color: rgba(111,140,255,.3); background: rgba(111,140,255,.04); }
 .folder-toolbar { display: flex; align-items: center; flex: 1; min-width: 0; gap: 12px; padding-block: 12px; }
 .folder-toolbar label { display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1; color: var(--muted); font-size: 11px; }
 .folder-toolbar label > svg { flex-shrink: 0; }

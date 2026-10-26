@@ -43,12 +43,17 @@
 | `orbit-kube-commands` | 内置和自定义命令模板 |
 | `orbit-default-kube-command` | 默认命令模板 ID |
 | `orbit-theme` | 亮色或暗色主题 |
+| `orbit-kube-sort` | 配置的手动、名称或创建时间排序偏好 |
 
 应用启动时会对旧版本 Kubeconfig 数据做一次轻量迁移，为缺少的 `contexts`、`createdAt` 和 `envName` 字段补齐默认值。
 
 书签分组采用扁平存储加可选 `parentId`：没有父分组的旧记录继续视为根目录，链接始终引用直属 `groupId`。`shared/bookmarks.mjs` 统一提供树遍历、祖先路径、子树筛选、整棵分组移动、删除保留策略及 Netscape HTML 递归导入导出。树遍历防止环和孤立引用导致分组不可见；修改上级时拒绝自身与后代。删除一个分组时，直属链接迁移到父级或可用分组，直接子分组提升一级，深层链接与目录保留。
 
 `BookmarkGroupTree` 独立渲染目录、折叠状态、子树链接计数和拖拽悬停展开。页面筛选、批量移动、链接行的分组选择及搜索结果均展示完整路径；搜索结果新建看板时复制必要的祖先链，避免再次摊平。`tests/bookmarks.test.mjs` 使用纯模拟书签和 HTML5 DOM 解析器测试 24 层目录、空目录、同名分支、浏览器 HTML 两种 DL 排列形式、移动和删除后引用完整性。测试依赖 jsdom 不进入生产应用。
+
+手动排序使用数组顺序持久化，避免另存不一致的序号。`shared/ordering.mjs` 提供不修改原数据的前后插入、可见顺序固化及命中区域判断；`placeBookmarkGroup` 以整棵子树为单位更新父级、顺序、跨看板链接归属，保留原 ID，拒绝循环与无效目标。`placeBookmarkLink` 将排序及目标分组更新合为一次状态变更。分组上下各四分之一区域插入同级，中间一半移入；拖到看板标题表示根目录，链接则进入根“未分组”。
+
+`src/hooks/useWorkspaceDrag.ts` 统一拖拽载荷、轻量预览、命中反馈、嵌套列表边缘滚动、清理和拖动结束的点击抑制。拖动不经过文本输入控件；提示放在列表之后避免目标几何位置跳动。Kubeconfig 自动排序视图第一次拖动时先固化当前可见顺序，再执行手动插入，隐藏行之间的顺序保持不变。`tests/drag-ui.test.mjs` 在隔离的 jsdom 工作区渲染实际 App，验证真实 React 拖拽事件路由与状态持久化；模拟配置和书签不读取用户数据。
 
 Kubeconfig 记录还包含用户可编辑的 `envName`（环境变量名称）、兼容旧版本的 `alias`/`metaName` 字段、来源类型和原始 YAML 文本。桌面版通过 `electron/preload.cjs` 暴露受限的文件选择、读取和写回 API；渲染层不会直接访问 Node.js 或 `ipcRenderer`。文件选择不按扩展名限制，兼容无后缀、`.yaml`、`.yml`、`.config`、`.conf` 和 `.txt` 等常见命名；写入路径支持 `~/`，由主进程展开到当前用户主目录。
 
