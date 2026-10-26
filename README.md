@@ -1,6 +1,21 @@
 # Orbit Workbench
 
-Orbit Workbench 是一个本地优先的书签看板与 kubeconfig 管理工作台。当前版本用 React + TypeScript + Vite 实现，适合先验证交互和数据模型，后续可以直接接入 Tauri 生成 macOS / Windows 桌面应用，也可以将同一套模型迁移到 SwiftUI 的 Apple 客户端。
+Orbit Workbench 是一个本地优先的书签、kubeconfig 和常用命令管理工作台。使用 React + TypeScript + Vite 构建界面，通过 Electron 打包 macOS / Windows 桌面应用。
+
+## 命令管理
+
+侧栏的「命令管理」提供独立的命令记录库，与 kubeconfig 的 kubectl 模板分开保存：
+
+- 新增、编辑、复制副本和删除多行命令，支持备注、分组与语言选择。
+- Shell/Bash、PowerShell、SQL、Python、JavaScript、JSON、YAML 和纯文本；代码块提供行号、语法配色、浅色注释及亮暗主题适配。
+- 每行右侧可复制原始行；顶部复制整段，多选后复制选中记录，「复制当前列表」复制当前筛选结果。复制不包含行号或提示符，保留注释、缩进和空行；逐行复制按物理行处理，跨行续写命令请复制整段。
+- 分组可重命名、调色和排序；拖动命令右侧手柄可排序或移入左侧分组，悬停目标明确高亮；也可直接通过记录上的分组菜单移动。
+- 多选记录可批量复制、移动、删除；删除分组会保留记录到「未分组」。支持名称、内容、备注和语言筛选，顶部搜索在命令页搜索所有命令分组。
+- 编辑支持 `⌘ / Ctrl + Enter` 保存，中文输入法候选确认不会误提交；保存失败时保留编辑内容。每条上限 100,000 字符，列表分批展示，避免大量代码同时高亮。
+
+记录只保存在本机，不执行命令。工作区 JSON 备份包含命令库；个人命令、书签和 kubeconfig 不会随源代码或安装包发布。
+
+交互设计参考 [pet](https://github.com/knqyf263/pet) 的命令片段记录与 [massCode](https://masscode.io/documentation/code/) 的分组代码库布局，语法高亮使用 [Prism](https://prismjs.com/)。
 
 ## 快速开始
 

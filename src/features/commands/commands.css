@@ -1,0 +1,136 @@
+/* The library owns its control sizing; legacy global form margins must not
+   shift search fields, language filters, checkboxes or row-level selectors. */
+.command-library-page { --code-bg: #101720; --code-text: #dae3f0; --code-comment: #8190a5; --code-string: #8ed6b6; --code-keyword: #b7a6f6; --code-function: #87b9ef; --code-number: #eab884; }
+.app-shell[data-theme='light'] .command-library-page, .app-shell[data-theme='light'] .command-editor-modal { --code-bg: #f5f7fc; --code-text: #33435d; --code-comment: #78869d; --code-string: #287e68; --code-keyword: #8360b7; --code-function: #386fb5; --code-number: #a45b2e; }
+.command-workspace { display: grid; grid-template-columns: 218px minmax(0, 1fr); border: 1px solid var(--line); border-radius: 14px; background: var(--panel); overflow: hidden; min-height: 600px; }
+.command-sidebar { padding: 23px 14px 18px; background: var(--panel-2); border-right: 1px solid var(--line-soft); display: flex; flex-direction: column; min-width: 0; }
+.command-sidebar-heading { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 650; margin: 0 10px 20px; }
+.command-sidebar-heading small { font-size: 10px; color: var(--muted); font-weight: 500; }
+.command-folder { display: flex; align-items: center; min-height: 42px; width: 100%; gap: 4px; padding: 2px 5px; margin-bottom: 4px; border-radius: 7px; color: var(--muted); background: transparent; }
+.command-folder:hover { background: var(--panel-3); }
+.command-folder.active { background: rgba(111,140,255,.12); color: var(--blue); }
+.command-folder-select { min-width: 0; min-height: 38px; display: flex; align-items: center; gap: 9px; flex: 1; padding: 0 4px; background: transparent; text-align: left; }
+.command-folder-select > span, .command-folder-all > span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
+.command-folder small { font-size: 10px; color: var(--muted); }
+.command-folder svg { flex-shrink: 0; }
+.command-folder-all { gap: 9px; padding-inline: 9px; text-align: left; }
+.command-folder-action { display: grid; place-items: center; flex: 0 0 25px; width: 25px; height: 28px; border-radius: 5px; color: var(--muted); background: transparent; opacity: .55; }
+.command-folder:hover .command-folder-action, .command-folder:focus-within .command-folder-action { opacity: 1; }
+.command-folder-action:hover { color: var(--blue); background: rgba(111,140,255,.1); }
+.command-folder-label { display: flex; justify-content: space-between; gap: 6px; margin: 25px 9px 10px; color: var(--muted); font-size: 10px; }
+.command-folder-label span { color: var(--faint); font-size: 9px; }
+.command-folders { max-height: 65vh; overflow: auto; padding: 3px; margin-inline: -3px; }
+.command-folders.receiving .command-folder { outline: 1px dashed var(--line); outline-offset: -1px; }
+.command-folders.receiving .command-folder.drop-inside { outline: 2px solid var(--blue); }
+.command-sidebar-note { display: flex; align-items: flex-start; gap: 8px; margin: auto 8px 0; padding-top: 36px; color: var(--muted); }
+.command-sidebar-note svg { color: var(--blue); flex-shrink: 0; margin-top: 2px; }
+.command-sidebar-note p { margin: 0; font-size: 10px; line-height: 1.9; }
+.command-main { padding: 25px 26px 28px; min-width: 0; }
+.command-list-heading { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 20px; }
+.command-list-heading > div { min-width: 0; display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+.command-list-heading h2 { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 16px; overflow-wrap: anywhere; }
+.command-list-heading h2 svg { color: var(--blue); flex-shrink: 0; }
+.command-list-heading span { font-size: 10px; color: var(--muted); white-space: nowrap; }
+.command-library-page .ghost-button, .command-library-page .primary-button { min-height: 36px; font-size: 11px; white-space: nowrap; }
+.command-library-page button:disabled { opacity: .45; cursor: default; }
+.command-list-tools { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+.command-search { display: flex; align-items: center; gap: 8px; padding: 0 11px; height: 38px; flex: 1 1 180px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 7px; color: var(--muted); }
+.command-search:focus-within { border-color: var(--blue); }
+.command-search > input { width: 100%; min-width: 0; border: 0; outline: none; margin: 0; height: 36px; background: transparent; color: var(--text); padding: 0; font-size: 12px; box-shadow: none; }
+.app-shell[data-theme='light'] .command-search > input { background: transparent; }
+.command-search > button { display: grid; place-items: center; background: transparent; padding: 3px; color: var(--muted); }
+.command-library-page select { margin: 0; min-width: 0; background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px; color: var(--text); font-size: 11px; height: 34px; padding: 0 8px; }
+.command-list-tools > select { width: 144px; height: 38px; flex-shrink: 0; }
+.command-library-page input[type='checkbox'] { appearance: auto; width: 15px; height: 15px; min-width: 15px; padding: 0; margin: 0; accent-color: var(--blue); cursor: pointer; }
+.command-selection-bar { min-height: 49px; margin: 8px 0 13px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; border-bottom: 1px solid var(--line-soft); padding: 7px 0; }
+.command-selection-bar > label { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--muted); white-space: nowrap; }
+.command-selection-bar > span { color: var(--faint); font-size: 10px; }
+.command-selection-bar.has-selection { border-color: rgba(111,140,255,.35); }
+.command-batch-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; }
+.command-batch-actions button { display: flex; align-items: center; justify-content: center; gap: 5px; height: 32px; padding: 0 8px; border-radius: 5px; font-size: 11px; background: var(--panel-2); }
+.command-batch-actions select { width: 120px; height: 32px; }
+.command-batch-actions button:hover { background: var(--panel-3); }
+.command-danger { color: var(--danger) !important; }
+.command-cards { display: flex; flex-direction: column; gap: 18px; padding: 2px; margin: -2px; }
+.command-card { border: 1px solid var(--line); border-radius: 10px; padding: 16px 16px 12px; min-width: 0; background: var(--panel); }
+.command-card.selected { border-color: var(--blue); box-shadow: 0 0 0 1px rgba(111,140,255,.12); }
+.command-card-heading { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.command-card-title { flex: 1; min-width: 0; }
+.command-card-title h3 { margin: 0; font-size: 14px; font-weight: 650; line-height: 1.5; overflow-wrap: anywhere; }
+.command-card-title p { margin: 3px 0 0; color: var(--muted); font-size: 10px; line-height: 1.7; overflow-wrap: anywhere; }
+.command-card-actions { display: flex; gap: 2px; flex: 0 0 auto; }
+.command-card-actions > button { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 6px; background: transparent; color: var(--muted); padding: 0; }
+.command-card-actions > button:hover { color: var(--blue); background: rgba(111,140,255,.1); }
+.command-card-meta { display: flex; align-items: center; gap: 12px; margin: 11px 0 12px 27px; flex-wrap: wrap; }
+.command-language { display: flex; align-items: center; gap: 5px; font-size: 9px; color: var(--blue); background: rgba(111,140,255,.09); border-radius: 4px; padding: 4px 7px; }
+.command-card-group { display: flex; align-items: center; gap: 5px; color: var(--muted); }
+.command-card-group select { width: auto; max-width: 180px; height: 25px; min-height: 0; padding: 0 3px; border-color: transparent; font-size: 10px; background: transparent; color: var(--muted); }
+.app-shell[data-theme='light'] .command-card-group select { border-color: transparent; background: transparent; color: var(--muted); }
+.command-card-group select:hover { border-color: var(--line); }
+.command-menu { position: relative; margin-left: auto; color: var(--muted); font-size: 10px; }
+.command-menu > summary { list-style: none; cursor: pointer; min-height: 28px; display: flex; align-items: center; gap: 5px; border-radius: 4px; padding: 0 6px; }
+.command-menu > summary::-webkit-details-marker { display: none; }
+.command-menu > summary:hover { background: var(--panel-2); }
+.command-menu > div { position: absolute; z-index: 9; top: 30px; right: 0; min-width: 144px; padding: 5px; border: 1px solid var(--line); border-radius: 7px; background: var(--panel); box-shadow: 0 8px 24px #0003; }
+.command-menu button { display: flex; align-items: center; gap: 8px; min-height: 34px; width: 100%; background: transparent; border-radius: 4px; padding: 6px 8px; text-align: left; font-size: 11px; }
+.command-menu button:hover { background: var(--panel-2); }
+.command-code { background: var(--code-bg, #101720); color: var(--code-text, #dae3f0); border: 1px solid var(--line-soft); border-radius: 7px; max-height: 330px; overflow: auto; padding: 10px 0; tab-size: 2; }
+.command-code-line { display: grid; grid-template-columns: 36px minmax(0, 1fr) 32px; gap: 6px; align-items: start; min-height: 26px; padding: 1px 8px 1px 2px; }
+.command-code-line:hover, .command-code-line:focus-within { background: rgba(111,140,255,.07); }
+.command-line-number { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 10px; line-height: 24px; text-align: right; padding-right: 5px; color: var(--faint); user-select: none; }
+.command-code-line code { font-family: ui-monospace, SFMono-Regular, 'Cascadia Code', Consolas, monospace; font-size: 12px; line-height: 24px; color: inherit; background: none; padding: 0; white-space: pre-wrap; overflow-wrap: anywhere; min-width: 0; }
+.command-line-copy { display: grid; place-items: center; width: 28px; height: 24px; padding: 0; border-radius: 4px; color: var(--muted); background: transparent; opacity: .22; }
+.command-code-line:hover .command-line-copy, .command-line-copy:focus-visible { opacity: 1; color: var(--blue); background: rgba(111,140,255,.1); }
+.command-line-copy:disabled { visibility: hidden; }
+.command-code .syntax-comment, .command-code .syntax-prolog, .command-code .syntax-doctype { color: var(--code-comment, #8190a5); font-style: italic; }
+.command-code .syntax-string, .command-code .syntax-char, .command-code .syntax-attr-value { color: var(--code-string, #8ed6b6); }
+.command-code .syntax-keyword, .command-code .syntax-boolean, .command-code .syntax-selector { color: var(--code-keyword, #b7a6f6); }
+.command-code .syntax-function, .command-code .syntax-builtin, .command-code .syntax-property { color: var(--code-function, #87b9ef); }
+.command-code .syntax-number, .command-code .syntax-variable, .command-code .syntax-parameter { color: var(--code-number, #eab884); }
+.command-code .syntax-operator, .command-code .syntax-punctuation { color: inherit; }
+.command-empty { padding: 60px 20px; text-align: center; color: var(--muted); }
+.command-empty > svg { color: var(--blue); opacity: .7; }
+.command-empty h3 { font-size: 15px; color: var(--text); margin: 15px 0 8px; }
+.command-empty p { font-size: 12px; margin-bottom: 20px; }
+.command-empty button { margin: 0 auto; }
+.command-show-more { padding: 12px; border-radius: 7px; border: 1px dashed var(--line); background: transparent; color: var(--muted); font-size: 12px; }
+.command-editor-toolbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+.command-editor-toolbar > div { display: flex; border: 1px solid var(--line); border-radius: 6px; padding: 3px; gap: 3px; }
+.command-editor-toolbar button { display: flex; align-items: center; gap: 6px; height: 30px; padding: 0 10px; border-radius: 4px; font-size: 11px; color: var(--muted); background: transparent; }
+.command-editor-toolbar button[aria-pressed='true'] { color: var(--blue); background: rgba(111,140,255,.13); }
+.command-editor-toolbar > label { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--muted); }
+.command-editor-toolbar select { height: 34px; margin: 0; padding: 0 8px; width: 145px; font-size: 12px; }
+.modal.command-editor-modal { height: min(820px, calc(100vh - 40px)); display: flex; flex-direction: column; overflow: hidden; }
+.command-editor-modal .modal-header { flex-shrink: 0; }
+.command-editor-modal .form-stack { flex: 1; min-height: 0; overflow: auto; padding-right: 3px; }
+.command-editor-modal .form-stack > * { flex-shrink: 0; }
+.modal.command-editor-modal .command-content-editor { flex: 1; margin: 0; min-height: 140px; height: auto; max-height: none; padding: 14px 16px; resize: none; tab-size: 2; font: 13px/1.9 ui-monospace, SFMono-Regular, Consolas, monospace; background: var(--code-bg, #101720); color: var(--code-text, #dae3f0); border-radius: 7px; }
+.command-editor-modal .command-editor-preview { flex: 1; min-height: 140px; overflow: hidden; }
+.command-editor-preview .command-code { height: 100%; max-height: none; }
+.command-editor-modal .modal-actions { position: sticky; bottom: 0; margin-top: 0; padding-top: 8px; background: var(--panel); }
+.command-editor-hint { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 6px; font-size: 10px; color: var(--muted); line-height: 1.7; }
+.command-color-field > span { display: block; font-size: 12px; color: var(--muted); margin-bottom: 10px; }
+.command-color-field > div { display: flex; gap: 10px; }
+.command-color-field button { width: 30px; height: 30px; border-radius: 7px; display: grid; place-items: center; color: white; }
+.command-color-field button[aria-pressed='true'] { outline: 2px solid var(--blue); outline-offset: 3px; }
+.command-delete-note { font-size: 13px; line-height: 1.9; color: var(--muted); margin: 0; }
+@media (max-width: 1150px) {
+  .command-workspace { grid-template-columns: 192px minmax(0, 1fr); }
+  .command-sidebar { padding-inline: 9px; }
+  .command-main { padding: 21px 18px; }
+  .command-folder-label span { display: none; }
+}
+@media (max-width: 760px) {
+  .command-workspace { display: block; }
+  .command-sidebar { border-right: 0; border-bottom: 1px solid var(--line); padding: 14px; }
+  .command-sidebar-heading { margin-bottom: 10px; }
+  .command-folder-label, .command-sidebar-note { display: none; }
+  .command-folders { max-height: 190px; }
+  .command-folder-all { margin-bottom: 8px; }
+  .command-main { padding: 18px 12px; }
+  .command-list-heading { align-items: flex-start; }
+  .command-list-heading .ghost-button { padding-inline: 8px; }
+  .command-card { padding: 13px 10px 10px; }
+  .command-card-heading { gap: 8px; }
+  .command-card-meta { margin-left: 0; }
+}

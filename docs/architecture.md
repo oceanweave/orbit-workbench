@@ -6,6 +6,7 @@
 - **Electron**：负责 macOS 桌面窗口、外部链接打开和应用打包。
 - **localStorage**：当前用于保存看板、Kubeconfig、命令模板和主题偏好。
 - **lucide-react**：提供统一的界面图标。
+- **Prism**：对独立命令库的代码进行本地语法分词；提供八种语言模式，不请求外部服务。
 
 应用目前采用本地优先模型：Kubeconfig 内容只在用户主动选择、粘贴或编辑时读取并保存在本机，不会上传或执行；桌面端仅按用户操作写回指定文件。
 
@@ -17,6 +18,8 @@
 │   └── main.cjs          # Electron 主进程和外部链接处理
 ├── src/
 │   ├── App.tsx           # 应用壳、页面状态和主要业务视图
+│   ├── features/commands/ # 独立命令库、编辑器、代码行渲染、持久化和主题样式
+│   ├── components/Modal.tsx # 共用弹窗，忽略输入法组合中的 Escape
 │   ├── data.ts           # 首次运行的示例数据和内置命令
 │   ├── main.tsx          # React 入口
 │   ├── styles.css        # 全局主题、布局和组件样式
@@ -44,10 +47,17 @@
 | `orbit-kube-groups` | Kubeconfig 环境分组 |
 | `orbit-kube-commands` | 内置和自定义命令模板 |
 | `orbit-default-kube-command` | 默认命令模板 ID |
+| `orbit-command-library` | 独立命令库（版本、分组及多行记录），与 kubectl 模板分离 |
 | `orbit-theme` | 亮色或暗色主题 |
 | `orbit-kube-sort` | 配置的手动、名称或创建时间排序偏好 |
 
 应用启动时会对旧版本 Kubeconfig 数据做一次轻量迁移，为缺少的 `contexts`、`createdAt` 和 `envName` 字段补齐默认值。
+
+命令库按功能域独立放在 `src/features/commands/`，页面、样式及语法分词模块仅在进入命令页时延迟加载，避免增加书签和 kubeconfig 首屏的解析开销。`CommandLibraryView` 管理分组、筛选、多选和拖放；`CommandEditor` 使用独立草稿，保存成功后才关闭；`CommandCode` 使用 Prism 分词后递归拆分逻辑行，用 React 文本节点渲染，避免 HTML 注入和多行字符串样式丢失。复制从原始 `content` 读取，不从带行号的 DOM 提取；单行保留缩进，整段保留原始换行，多个记录用两个换行分隔。代码块允许换行和内部滚动，长列表每次增加 20 条，分词结果按内容和语言缓存。
+
+`shared/commands.mjs` 提供可测试的筛选、复制文本组合、排序、批量移动和分组删除规则。空 `groupId` 表示固定的「未分组」；删除分组保留所有命令内容。记录和分组的数组顺序即手动排序，拖拽复用 `useWorkspaceDrag` 的小型浮层与插入线。`useCommandLibrary` 在更新 UI 前同步提交本地存储，配额或权限失败时返回失败并保留草稿；演示记录只有无凭据的命令文本。工作区 JSON 备份包含命令库和 kubectl 模板。
+
+`tests/commands.test.mjs` 和 `tests/commands-ui.test.mjs` 使用模拟内容与隔离存储，覆盖换行/缩进、八种语言分词文本完整性、逐行和整体复制、CRUD、输入法确认、拖放排序及归类、批量操作、删除分组保留内容、存储满时保留编辑及重载持久化。不读取或运行真实用户命令。
 
 书签分组采用扁平存储加可选 `parentId`：没有父分组的旧记录继续视为根目录，链接始终引用直属 `groupId`。`shared/bookmarks.mjs` 统一提供树遍历、祖先路径、子树筛选、整棵分组移动、删除保留策略及 Netscape HTML 递归导入导出。树遍历防止环和孤立引用导致分组不可见；修改上级时拒绝自身与后代。删除一个分组时，直属链接迁移到父级或可用分组，直接子分组提升一级，深层链接与目录保留。
 

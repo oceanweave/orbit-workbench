@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { dropPosition, type DropPosition } from '../../shared/ordering.mjs'
 import '../components/workspace-drag.css'
 
-export type WorkspaceDragItem = { kind: 'board' | 'group' | 'link' | 'config' | 'kube-group'; id: string; boardId?: string }
+export type WorkspaceDragItem = { kind: 'board' | 'group' | 'link' | 'config' | 'kube-group' | 'command' | 'command-group'; id: string; boardId?: string }
 export type WorkspaceDropTarget = WorkspaceDragItem & { position: DropPosition }
 
 export function rowDropTarget(event: React.DragEvent<HTMLElement>, item: WorkspaceDragItem, nested = false): WorkspaceDropTarget {
@@ -54,7 +54,7 @@ export function useWorkspaceDrag() {
     // Native drag autoscroll can skip nested panels. Scroll the closest list
     // near its edges, without changing the size of any potential drop target.
     if (Date.now() - scrollAt.current > 40) {
-      const panel = event.currentTarget.closest<HTMLElement>('.board-tree, .config-list, .kube-groups')
+      const panel = event.currentTarget.closest<HTMLElement>('.board-tree, .config-list, .kube-groups, .command-folders, .command-cards')
       if (panel && panel.scrollHeight > panel.clientHeight) {
         const bounds = panel.getBoundingClientRect()
         if (event.clientY < bounds.top + 28) panel.scrollTop -= 18

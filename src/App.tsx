@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Archive,
   ArrowDownUp,
@@ -47,6 +47,8 @@ import {
   Moon,
 } from 'lucide-react'
 import { commandTemplates, initialBoards, initialKubeConfigs, initialKubeGroups } from './data'
+import { Modal } from './components/Modal'
+import { useCommandLibrary } from './features/commands/useCommandLibrary'
 import { KubeImportPanel } from './components/KubeImportPanel'
 import { BookmarkGroupTree } from './components/BookmarkGroupTree'
 import { useWorkspaceDrag, rowDropTarget, dropClassName, isSameDragItem, type WorkspaceDropTarget } from './hooks/useWorkspaceDrag'
@@ -55,7 +57,9 @@ import { bookmarkGroupRows, bookmarkGroupPath, bookmarkDescendantIds, reparentBo
 import { inspectKubeconfig, prepareKubeImports } from '../shared/kubeconfig.mjs'
 import type { BookmarkBoard, BookmarkGroup, CommandTemplate, KubeConfig, KubeGroup, LinkItem } from './types'
 
-type Section = 'bookmarks' | 'kubeconfig' | 'settings'
+const CommandLibraryView = lazy(() => import('./features/commands/CommandLibraryView').then((module) => ({ default: module.CommandLibraryView })))
+
+type Section = 'bookmarks' | 'kubeconfig' | 'commands' | 'settings'
 type Theme = 'dark' | 'light'
 type Density = 'comfortable' | 'compact'
 type ConfigSort = 'manual' | 'created' | 'name'
@@ -235,6 +239,8 @@ function App() {
     }
   }
 
+  const [commandLibrary, saveCommandLibrary] = useCommandLibrary(notify)
+
   const exportFile = (filename: string, content: string, type: string) => {
     const blob = new Blob([content], { type })
     const url = URL.createObjectURL(blob)
@@ -255,7 +261,7 @@ function App() {
   }
 
   const exportWorkspaceBackup = () => {
-    const payload = JSON.stringify({ version: 1, exportedAt: new Date().toISOString(), boards, kubeGroups, kubeConfigs }, null, 2)
+    const payload = JSON.stringify({ version: 1, exportedAt: new Date().toISOString(), boards, kubeGroups, kubeConfigs, kubeCommands, commandLibrary }, null, 2)
     exportFile('orbit-workbench.backup.json', payload, 'application/json')
   }
 
@@ -298,6 +304,7 @@ function App() {
         <nav className="primary-nav" aria-label="主导航">
           <NavItem icon={<Bookmark size={17} />} label="书签看板" active={section === 'bookmarks'} onClick={() => { setGlobalSearchOpen(false); setQuery(''); setSection('bookmarks') }} />
           <NavItem icon={<Box size={17} />} label="Kubeconfig" active={section === 'kubeconfig'} onClick={() => { setGlobalSearchOpen(false); setQuery(''); setSection('kubeconfig') }} />
+          <NavItem icon={<Terminal size={17} />} label="命令管理" active={section === 'commands'} onClick={() => { setGlobalSearchOpen(false); setQuery(''); setSection('commands') }} />
         </nav>
 
         <div className="rail-divider" />
@@ -314,11 +321,11 @@ function App() {
 
       <main className="main-area">
         <header className="topbar">
-          <div className="crumbs"><span>工作空间</span><ChevronRight size={14} /><strong>{globalSearchOpen ? '搜索结果' : section === 'bookmarks' ? '书签看板' : section === 'kubeconfig' ? 'Kubeconfig' : '偏好设置'}</strong></div>
+          <div className="crumbs"><span>工作空间</span><ChevronRight size={14} /><strong>{globalSearchOpen ? '搜索结果' : section === 'bookmarks' ? '书签看板' : section === 'kubeconfig' ? 'Kubeconfig' : section === 'commands' ? '命令管理' : '偏好设置'}</strong></div>
           <div className="topbar-actions">
             <label className="global-search">
               <Search size={16} />
-              <input ref={searchRef} value={query} onChange={(event) => setQuery(event.target.value)} onKeyDown={(event) => { if (isCommittedEnter(event) && query.trim()) { event.preventDefault(); setGlobalSearchOpen(true) } if (event.key === 'Escape') { setGlobalSearchOpen(false); setQuery('') } }} placeholder="搜索所有看板、配置、标签…" aria-label="搜索所有看板、配置、标签" />
+              <input ref={searchRef} value={query} onChange={(event) => setQuery(event.target.value)} onKeyDown={(event) => { if (isCommittedEnter(event) && query.trim()) { event.preventDefault(); if (section !== 'commands') setGlobalSearchOpen(true) } if (event.key === 'Escape') { setGlobalSearchOpen(false); setQuery('') } }} placeholder={section === 'commands' ? '搜索所有命令、分组、备注…' : '搜索所有看板、配置、标签…'} aria-label={section === 'commands' ? '搜索所有命令、分组、备注' : '搜索所有看板、配置、标签'} />
               {query && <button className="icon-button tiny" onClick={() => { setQuery(''); setGlobalSearchOpen(false) }} aria-label="清空搜索"><X size={13} /></button>}
               <kbd>⌘ K</kbd>
             </label>
@@ -347,6 +354,7 @@ function App() {
           />
         )}
         {section === 'kubeconfig' && <KubeconfigView configs={kubeConfigs} setConfigs={setKubeConfigs} groups={kubeGroups} setGroups={setKubeGroups} commands={kubeCommands} setCommands={setKubeCommands} defaultCommandId={defaultCommandId} onDefaultCommandChange={setDefaultCommandId} query={query} onClearQuery={() => setQuery('')} onCopy={copyText} notify={notify} />}
+        {section === 'commands' && <Suspense fallback={<div className="content-wrap" role="status">正在打开命令库…</div>}><CommandLibraryView library={commandLibrary} saveLibrary={saveCommandLibrary} onCopy={copyText} notify={notify} query={query} clearQuery={() => setQuery('')} /></Suspense>}
         {section === 'settings' && <SettingsView boards={boards} configs={kubeConfigs} theme={theme} onThemeChange={setTheme} density={density} onDensityChange={setDensity} />}
         </>}
       </main>
@@ -356,7 +364,7 @@ function App() {
         if (file) void handleBookmarkImport(file)
         event.target.value = ''
       }} />
-      {showHelp && <Modal title="使用帮助" onClose={() => setShowHelp(false)}><div className="help-content"><p>Orbit Workbench 的数据默认只保存在本机浏览器中，并会自动保存。</p><div className="help-shortcuts"><div><kbd>⌘ / Ctrl</kbd><strong>+ K</strong><span>聚焦顶部搜索框</span></div><div><kbd>Esc</kbd><span>关闭当前弹窗</span></div><div><kbd>拖拽</kbd><span>把书签或 kubeconfig 拖到左侧高亮分组</span></div></div><p className="muted-copy">书签链接会在默认浏览器中打开；kubeconfig 命令只生成文本，不会自动执行。</p></div></Modal>}
+      {showHelp && <Modal title="使用帮助" onClose={() => setShowHelp(false)}><div className="help-content"><p>Orbit Workbench 的数据默认只保存在本机浏览器中，并会自动保存。</p><div className="help-shortcuts"><div><kbd>⌘ / Ctrl</kbd><strong>+ K</strong><span>聚焦顶部搜索框</span></div><div><kbd>Esc</kbd><span>关闭当前弹窗</span></div><div><kbd>拖拽</kbd><span>把书签、kubeconfig 或命令记录拖到左侧高亮分组</span></div></div><p className="muted-copy">书签链接会在默认浏览器中打开；kubeconfig 命令只生成文本，不会自动执行。</p></div></Modal>}
       {toast && <div className="toast" style={{ left: toastPosition.x, top: toastPosition.y }} role="status" aria-live="polite"><Check size={16} />{toast}</div>}
     </div>
   )
@@ -1267,16 +1275,5 @@ function SettingsView({ boards, configs, theme, onThemeChange, density, onDensit
   return <div className="content-wrap settings-page"><div className="page-heading"><div><div className="eyebrow"><span className="eyebrow-dot" />WORKSPACE</div><h1>偏好设置</h1><p>调整界面显示并检查工作区状态。</p></div></div><div className="settings-grid"><section className="settings-card theme-settings-card"><div className={`settings-card-icon ${theme === 'light' ? 'orange' : ''}`}>{theme === 'light' ? <Sun size={18} /> : <Moon size={18} />}</div><div><h3>界面主题</h3><p>在暗色和亮色界面之间切换，选择会自动保存到本机。</p></div><div className="theme-switch" role="group" aria-label="界面主题"><button className={theme === 'dark' ? 'active' : ''} onClick={() => onThemeChange('dark')}><Moon size={13} />暗色</button><button className={theme === 'light' ? 'active' : ''} onClick={() => onThemeChange('light')}><Sun size={13} />亮色</button></div></section><section className="settings-card density-settings-card"><div className="settings-card-icon green"><SlidersHorizontal size={18} /></div><div><h3>信息密度</h3><p>在快速浏览和完整信息之间切换，配置会自动保存到本机。</p></div><div className="density-switch" role="group" aria-label="信息密度"><button className={density === 'comfortable' ? 'active' : ''} onClick={() => onDensityChange('comfortable')}><LayoutGrid size={13} />舒适</button><button className={density === 'compact' ? 'active' : ''} onClick={() => onDensityChange('compact')}><ListFilter size={13} />紧凑</button></div></section><section className="settings-card"><div className="settings-card-icon"><Laptop size={18} /></div><div><h3>本地工作区</h3><p>当前版本将数据保存到浏览器本地存储，适合单机使用和快速验证。</p></div><span className="status-badge"><span />正常</span></section><section className="settings-card"><div className="settings-card-icon green"><Archive size={18} /></div><div><h3>数据概览</h3><p>{boards.length} 个书签看板 · {configs.length} 个 kubeconfig · 自动保存已开启</p></div><span className="status-badge"><span />已同步</span></section><section className="settings-card"><div className="settings-card-icon orange"><Code2 size={18} /></div><div><h3>跨平台路线</h3><p>桌面端可接入 Tauri 文件系统；Apple 端可复用同一数据模型，接入 iCloud 或 CloudKit。</p></div><span className="version-label">v0.1</span></section></div></div>
 }
 
-function Modal({ title, onClose, children, className = '' }: { title: string; onClose: () => void; children: React.ReactNode; className?: string }) {
-  useEffect(() => {
-    const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose()
-    }
-    window.addEventListener('keydown', handleEscape)
-    return () => window.removeEventListener('keydown', handleEscape)
-  }, [onClose])
-
-  return <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.currentTarget === event.target) onClose() }}><div className={`modal ${className}`.trim()} role="dialog" aria-modal="true" aria-label={title}><div className="modal-header"><h2>{title}</h2><button className="icon-button" onClick={onClose} aria-label="关闭"><X size={17} /></button></div>{children}</div></div>
-}
 
 export default App
