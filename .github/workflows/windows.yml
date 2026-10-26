@@ -30,6 +30,8 @@ jobs:
 
       - name: Build Windows packages
         run: npm run app:win
+      - name: Audit Windows package contents
+        run: npm run package:audit -- release/win-unpacked/resources/app.asar
 
       - name: Verify Windows artifacts
         shell: pwsh

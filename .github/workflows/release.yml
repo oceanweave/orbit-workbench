@@ -25,6 +25,8 @@ jobs:
         run: npm test
       - name: Build macOS DMG
         run: npm run app:dmg
+      - name: Audit macOS package contents
+        run: npm run package:audit -- "release/mac-arm64/Orbit Workbench.app/Contents/Resources/app.asar"
       - name: Upload macOS artifact
         uses: actions/upload-artifact@v4
         with:
@@ -48,6 +50,8 @@ jobs:
         run: npm test
       - name: Build Windows packages
         run: npm run app:win
+      - name: Audit Windows package contents
+        run: npm run package:audit -- release/win-unpacked/resources/app.asar
       - name: Upload Windows artifacts
         uses: actions/upload-artifact@v4
         with:

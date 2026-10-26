@@ -5,6 +5,19 @@ release/
 *.log
 *.tsbuildinfo
 bookmarks_*.html
+orbit-bookmarks*.html
+bookmarks*.json
+orbit-workbench*.json
+*.backup.json
+*.pem
+*.key
+*.p12
+*.pfx
+Local Storage/
+Session Storage/
+IndexedDB/
+Cookies
+Cookies-journal
 
 # Local cluster credentials, imported files and workspace data must stay local.
 .kube/

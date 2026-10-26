@@ -1,7 +1,7 @@
 {
   "name": "orbit-workbench",
   "private": true,
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Local-first bookmark and kubeconfig workbench",
   "author": "Orbit Workbench",
   "type": "module",
@@ -18,7 +18,8 @@
     "app:win:dir": "npm run build && electron-builder --win dir --x64 --publish never",
     "app:win:nsis": "npm run build && electron-builder --win nsis --x64 --publish never",
     "app:win:zip": "npm run build && electron-builder --win zip --x64 --publish never",
-    "app:open": "open \"release/mac-arm64/Orbit Workbench.app\""
+    "app:open": "open \"release/mac-arm64/Orbit Workbench.app\"",
+    "package:audit": "node scripts/audit-package.mjs"
   },
   "dependencies": {
     "@vitejs/plugin-react": "latest",
@@ -30,6 +31,7 @@
     "yaml": "^2.9.1"
   },
   "devDependencies": {
+    "@electron/asar": "^3.4.1",
     "@types/prismjs": "^1.26.6",
     "@types/react": "latest",
     "@types/react-dom": "latest",
@@ -50,8 +52,9 @@
     },
     "files": [
       "dist/**/*",
-      "electron/**/*",
-      "shared/**/*",
+      "electron/*.cjs",
+      "shared/*.mjs",
+      "shared/*.d.mts",
       "package.json"
     ],
     "mac": {

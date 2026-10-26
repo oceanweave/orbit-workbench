@@ -122,3 +122,13 @@ git diff --check
 4. 增加 HTML / JSON 双向导入导出与冲突合并。
 5. Apple 端优先做 iPad 分栏布局，再复用数据模型扩展 iPhone 快捷入口和 iCloud 同步。
 
+
+## 发布与本地数据隔离
+
+`v*` tag 触发 GitHub Actions 生成 DMG、Windows EXE 和 ZIP，再发布到 GitHub Release。发布前会运行全部测试并对实际 `app.asar` 检查：只允许构建资源、应用模块及安装依赖，检测到本地导入文件或浏览器存储则终止发布。可手动执行：
+
+```bash
+npm run package:audit -- "release/mac-arm64/Orbit Workbench.app/Contents/Resources/app.asar"
+```
+
+用户的 kubeconfig、书签、命令记录及备份只保留在本机，不纳入 Git 或安装包；代码中的公开链接和无凭据配置仅用于演示和测试。源码与模拟测试可以上传，真实数据不要放入项目目录。
