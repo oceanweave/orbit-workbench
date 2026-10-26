@@ -25,6 +25,8 @@ jobs:
 
       - name: Type check
         run: npm run check
+      - name: Test local kubeconfig imports
+        run: npm test
 
       - name: Build Windows packages
         run: npm run app:win

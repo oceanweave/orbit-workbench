@@ -5,3 +5,18 @@ release/
 *.log
 *.tsbuildinfo
 bookmarks_*.html
+
+# Local cluster credentials, imported files and workspace data must stay local.
+.kube/
+kubeconfigs/
+local-data/
+.local/
+*.kubeconfig
+kubeconfig
+kubeconfig.*
+!shared/kubeconfig.mjs
+!shared/kubeconfig.d.mts
+orbit-workspace*.json
+.env
+.env.*
+!.env.example

@@ -48,6 +48,10 @@
 
 Kubeconfig 记录还包含用户可编辑的 `envName`（环境变量名称）、兼容旧版本的 `alias`/`metaName` 字段、来源类型和原始 YAML 文本。桌面版通过 `electron/preload.cjs` 暴露受限的文件选择、读取和写回 API；渲染层不会直接访问 Node.js 或 `ipcRenderer`。文件选择不按扩展名限制，兼容无后缀、`.yaml`、`.yml`、`.config`、`.conf` 和 `.txt` 等常见命名；写入路径支持 `~/`，由主进程展开到当前用户主目录。
 
+导入由 `KubeImportPanel` 统一提供文件、目录、剪贴板入口。`shared/kubeconfig.mjs` 使用 YAML 解析器识别 Config、提取真实 Context 与对应集群、按路径去重并分配不冲突的环境变量名称；不执行 `users.exec`。`electron/kube-files.cjs` 提供可独立测试的只读文件读取、目录递归扫描与本地独占保存。单文件上限 2 MB，单次目录扫描上限 5,000 文件 / 32 MB 有效内容；不追踪符号链接，跳过 `.git` 和 `node_modules`，错误不包含原始 YAML。扫描结果先预览再勾选导入，写入本地工作区前检查存储容量。
+
+剪贴板默认目录为 `app.getPath('userData')/kubeconfigs`，支持用户指定其他本地目录；保存前检查真实父目录的 `.git`（含 worktree 的 `.git` 文件与符号链接路径），拒绝在仓库内创建配置。使用 `wx` 独占创建，macOS/Linux 新文件权限为 `0600`。真实配置和工作区数据只在本机，构建包含代码、共享解析模块和生产依赖，测试样例只在系统临时目录动态生成。
+
 ## 命令生成规则
 
 命令生成器只拼接文本，不执行 shell 命令。生成结果由以下部分组成：

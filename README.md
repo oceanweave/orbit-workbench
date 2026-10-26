@@ -65,7 +65,8 @@ npm run app:win:zip
 - 浏览器书签导入：支持 Netscape Bookmark HTML，顶层文件夹映射为看板，嵌套文件夹映射为分组。
 - 看板导出：`导出当前` 和 `导出全部` 生成 Netscape Bookmark HTML，可直接导入 Chrome、Edge、Firefox 等浏览器；`备份 JSON` 用于保留 Orbit Workbench 的完整本地数据。
 - Kubeconfig：配置文件路径、环境分组、标签、Context 选择、详情编辑和拖拽归类；详情页可查看和修改原始 YAML，并在桌面版写回源文件。
-- Kubeconfig 导入：支持选择任意文本文件（包括无后缀、`.yaml`、`.yml`、`.config`、`.conf`、`.txt`），也支持选择保存目录后从剪贴板或文本框创建配置；每个配置有独立、可自定义的环境变量名称，命令会自动生成对应的 shell 环境变量。
+- Kubeconfig 导入：提供单个文件、目录递归扫描、剪贴板三个入口。不按后缀筛选，按 YAML / JSON 内容识别；目录扫描后可勾选配置并批量导入到指定分组，重复路径自动跳过。Context、集群地址、文件名及环境变量名称自动生成，仍可调整名称和标签。文件与目录导入只读取原文件。
+- 剪贴板内容默认保存到应用本地数据目录下的 `kubeconfigs/`，可选择仓库以外的其他目录；文件权限为 `0600`（macOS/Linux），同名文件不会被覆盖。不会上传配置或执行其中的认证插件。浏览器模式导入文件需补充完整本机路径；剪贴板保存文件需要桌面版。
 - 命令生成器：点击任意 kubeconfig 后选择 Context、命令模板、命名空间和附加参数，实时生成并复制；支持环境变量名称、自定义命令和默认命令：
 
   ```bash
@@ -82,7 +83,7 @@ npm run app:win:zip
 
 ## 项目结构和协作
 
-核心代码集中在 `src/`，Electron 主进程位于 `electron/`。数据模型和内置示例数据分别维护在 `src/types.ts` 与 `src/data.ts`；页面状态、导入导出和命令生成逻辑目前集中在 `src/App.tsx`，后续按功能域增长时再拆分为 `src/features/`、`src/components/` 和 `src/lib/`。
+核心代码集中在 `src/`，Electron 主进程位于 `electron/`。Kubeconfig 导入界面位于 `src/components/KubeImportPanel.tsx`，跨端解析和去重位于 `shared/kubeconfig.mjs`，本地目录遍历和文件保存位于 `electron/kube-files.cjs`。`npm test` 在系统临时目录创建纯模拟文件，覆盖无后缀、`.txt`、多层目录、重复识别、权限和仓库隔离；测试结束后清理临时目录，真实配置不进入仓库。
 
 - [架构说明](docs/architecture.md)：数据流、持久化键、命令生成和桌面打包边界。
 - [贡献指南](CONTRIBUTING.md)：开发、验证、提交和发布流程。

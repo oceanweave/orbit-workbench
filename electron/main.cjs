@@ -1,4 +1,5 @@
-const { app, BrowserWindow, dialog, ipcMain, shell } = require('electron')
+const { app, BrowserWindow, clipboard, dialog, ipcMain, shell } = require('electron')
+const { readKubeFile, scanKubeDirectory, saveManagedKubeFile } = require('./kube-files.cjs')
 const fs = require('node:fs/promises')
 const os = require('node:os')
 const path = require('node:path')
@@ -36,8 +37,17 @@ ipcMain.handle('orbit:pick-kubeconfig-file', async () => {
   })
   if (result.canceled || !result.filePaths[0]) return null
   const selectedPath = result.filePaths[0]
-  return { path: selectedPath, content: await fs.readFile(selectedPath, 'utf8') }
+  return readKubeFile(selectedPath)
 })
+
+ipcMain.handle('orbit:import-kubeconfig-directory', async (_event, options) => {
+  const result = await dialog.showOpenDialog({ title: '选择要导入的 kubeconfig 目录', properties: ['openDirectory'] })
+  if (result.canceled || !result.filePaths[0]) return null
+  return scanKubeDirectory(result.filePaths[0], { recursive: options?.recursive !== false })
+})
+
+ipcMain.handle('orbit:read-clipboard', () => clipboard.readText())
+ipcMain.handle('orbit:kubeconfig-directory', () => path.join(app.getPath('userData'), 'kubeconfigs'))
 
 ipcMain.handle('orbit:pick-directory', async () => {
   const result = await dialog.showOpenDialog({ title: '选择保存目录', properties: ['openDirectory', 'createDirectory'] })
@@ -45,13 +55,7 @@ ipcMain.handle('orbit:pick-directory', async () => {
 })
 
 ipcMain.handle('orbit:save-kubeconfig-file', async (_event, input) => {
-  const directoryPath = expandUserPath(String(input?.directoryPath ?? ''))
-  const fileName = path.basename(String(input?.fileName ?? 'config.yaml')) || 'config.yaml'
-  const content = String(input?.content ?? '')
-  await fs.mkdir(directoryPath, { recursive: true })
-  const targetPath = path.join(directoryPath, fileName)
-  await fs.writeFile(targetPath, content, { encoding: 'utf8', mode: 0o600 })
-  return { path: targetPath, content }
+  return saveManagedKubeFile({ directoryPath: String(input?.directoryPath ?? ''), fileName: String(input?.fileName ?? ''), content: String(input?.content ?? '') })
 })
 
 ipcMain.handle('orbit:write-kubeconfig-file', async (_event, input) => {
