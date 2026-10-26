@@ -15,7 +15,9 @@ export function auditPackage(archive) {
   let checked = 0
   for (const entry of paths) {
     const path = entry.replaceAll('\\', '/')
-    const metadata = statFile(archive, path.replace(/^\/+/, ''), false)
+    // ASAR's lookup splits on the host platform separator. Normalize only for
+    // policy matching; feeding the POSIX policy path back into it breaks Windows.
+    const metadata = statFile(archive, entry.replace(/^[/\\]+/, ''), false)
     if (metadata.files) continue
     checked++
     if (userDataSegment.test(path) || (!path.startsWith('/node_modules/') && (!applicationFile.test(path) || metadata.link))) rejected.push(path)
