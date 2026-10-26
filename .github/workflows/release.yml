@@ -22,7 +22,7 @@ jobs:
       - name: Install dependencies
         run: npm ci
       - name: Test local kubeconfig imports
-        run: npm test
+        run: node scripts/run-ci-tests.mjs
       - name: Build macOS DMG
         run: npm run app:dmg
       - name: Audit macOS package contents
@@ -47,7 +47,7 @@ jobs:
       - name: Install dependencies
         run: npm ci
       - name: Test local kubeconfig imports
-        run: npm test
+        run: node scripts/run-ci-tests.mjs
       - name: Build Windows packages
         run: npm run app:win
       - name: Audit Windows package contents

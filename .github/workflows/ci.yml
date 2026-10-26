@@ -22,6 +22,6 @@ jobs:
       - name: Type check
         run: npm run check
       - name: Test local kubeconfig imports
-        run: npm test
+        run: node scripts/run-ci-tests.mjs
       - name: Build web assets
         run: npm run build
