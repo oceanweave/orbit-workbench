@@ -61,6 +61,13 @@ test('rendered app routes drag events for boards, folder hierarchies, links and 
     assert.ok(button('选择分组 灵感收藏 / Kubernetes / 学习资料'))
     await click(button('选择分组 工程效率 / 常用工具'))
     const linkTitles = () => [...document.querySelectorAll('.link-inline-title')].map((item) => item.value)
+    const opened = []
+    dom.window.open = (...args) => { opened.push(args); return null }
+    await click(button('打开 Google'))
+    assert.equal(opened.length, 1, 'the large open area must open exactly once')
+    assert.equal(opened[0][0], 'https://www.google.com/')
+    for (const input of document.querySelectorAll('[data-link-id="link-google"] input')) await click(input)
+    assert.equal(opened.length, 1, 'inline edits must not open the browser')
     await drag(button('拖动链接 JSON 转 YAML'), document.querySelector('[data-link-id="link-google"]'), .1)
     assert.deepEqual(linkTitles(), ['JSON 转 YAML', 'Google', 'OneTab'])
     // Inline editing must not initiate a drag.

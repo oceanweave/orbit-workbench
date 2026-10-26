@@ -1,0 +1,35 @@
+/* Keep opening a link separate from editing it, with a full-height target in
+   the middle of the row instead of a small icon beside the title. */
+.link-list .row-content {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(48px, 22%);
+  align-items: stretch;
+  gap: 8px;
+  min-height: 60px;
+}
+.link-text-fields { display: flex; flex-direction: column; justify-content: center; min-width: 0; }
+.link-list .link-open-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  width: 100%;
+  min-width: 48px;
+  min-height: 60px;
+  padding: 6px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: color .15s, background .15s, border-color .15s;
+}
+.link-open-area span { font-size: 10px; line-height: 14px; }
+.link-list .link-open-area:hover, .link-list .link-open-area:focus-visible {
+  border-color: rgba(111,140,255,.28);
+  background: rgba(111,140,255,.09);
+  color: var(--blue-soft);
+}
+.app-shell[data-density='compact'] .link-list .row-content,
+.app-shell[data-density='compact'] .link-list .link-open-area { min-height: 48px; }
