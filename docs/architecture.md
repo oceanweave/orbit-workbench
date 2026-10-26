@@ -31,6 +31,8 @@
 
 ## 数据流
 
+表单布局集中在 `src/components/form-layout.css`，由入口在基础样式后加载。弹窗字段使用 18px 标签行高、8px 标签间距、42px 控件高度；目录输入与按钮共用同一个控件行，控件自身不再携带顶部外边距。命令生成器使用同一原则和 40px 控件高度。导入方式导航及操作栏保留在滚动区域边缘，剪贴板编辑器用 `focus({ preventScroll: true })` 聚焦，避免切换来源时意外滚走导航。
+
 `App` 负责加载持久化状态，并根据当前导航渲染书签或 Kubeconfig 页面。页面组件通过受控 props 修改状态；状态变化后由 `usePersistentState` 写回 localStorage。
 
 主要键名如下：

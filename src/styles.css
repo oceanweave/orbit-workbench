@@ -737,7 +737,6 @@ html[data-theme='light'] .kube-drag-preview { border-color: #39a989; background:
 .import-detected-file > span { flex-shrink: 0; font-size: 11px; }
 .import-name-row { margin: 0; gap: 16px; }
 .kube-import-panel label { color: var(--muted); font-size: 12px; line-height: 1.5; }
-.kube-import-panel label > input:not([type='checkbox']), .kube-import-panel label > select { display: block; width: 100%; height: 42px; margin-top: 7px; font-size: 13px; border-radius: 8px; }
 .kube-import-panel input[type='checkbox'] { flex-shrink: 0; width: 17px; height: 17px; margin: 0; accent-color: var(--blue); }
 .import-directory-actions { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; }
 .import-directory-actions .toolbar-button { height: 40px; font-size: 13px; gap: 9px; }
@@ -771,14 +770,8 @@ html[data-theme='light'] .kube-drag-preview { border-color: #39a989; background:
 .import-clipboard-area .yaml-editor { width: 100%; min-height: 200px; max-height: 350px; resize: vertical; font-size: 12px; }
 .import-valid { display: flex; align-items: center; gap: 6px; margin: 0; color: var(--green); font-size: 11px; overflow-wrap: anywhere; }
 .import-save-location .form-row { margin: 0; gap: 16px; }
-.import-save-location .input-with-action { margin-top: 7px; }
-.import-save-location .input-with-action input { height: 42px; font-size: 12px; }
-.import-save-location .input-with-action button { height: 42px; }
 .import-save-location > small, .import-browser-path > small { color: var(--faint); font-size: 11px; line-height: 1.7; }
 .import-destination { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; border-top: 1px solid var(--line-soft); padding-top: 16px; }
-.import-destination details { color: var(--muted); font-size: 12px; }
-.import-destination summary { cursor: pointer; padding: 0 0 7px; line-height: 1.5; }
-.import-destination details input { width: 100%; height: 42px; font-size: 13px; }
 .import-privacy { display: flex; align-items: center; gap: 7px; margin: 0; color: var(--muted); font-size: 11px; line-height: 1.6; }
 .import-privacy svg { color: var(--green); flex-shrink: 0; }
 .import-footer { position: sticky; bottom: 0; z-index: 1; padding: 14px 0 2px; border-top: 1px solid var(--line-soft); margin-top: 0; background: var(--panel); }
@@ -792,9 +785,6 @@ html[data-theme='light'] .kube-drag-preview { border-color: #39a989; background:
   .import-source-tabs strong { font-size: 12px; }
   .kube-import-panel .form-row, .import-destination { grid-template-columns: minmax(0, 1fr); }
 }
-.input-with-action { display: flex; gap: 8px; align-items: center; }
-.input-with-action input { flex: 1; min-width: 0; }
-.input-with-action .toolbar-button { flex: 0 0 auto; height: 34px; }
 .textarea-with-action { position: relative; }
 .textarea-with-action .yaml-editor { padding-bottom: 42px; }
 .clipboard-button { position: absolute; right: 8px; bottom: 8px; }
@@ -1792,35 +1782,9 @@ pre { padding: 15px 14px; font-size: 11px; line-height: 1.9; }
   width: 18px;
   height: 18px;
 }
-.command-form > .form-row {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
-  align-items: start;
-}
-.command-form > .form-row > label {
-  display: grid;
-  grid-template-rows: 17px 40px;
-  min-width: 0;
-  align-content: start;
-}
-.command-form > .form-row > label > select,
-.command-form > .form-row > label > input {
-  min-width: 0;
-  margin-top: 0;
-}
-.command-form > .form-row > label > select {
-  width: 100%;
-}
 
 .app-shell[data-density='compact'] .selected-config > .icon-button.tiny {
   width: 34px;
   height: 34px;
   flex-basis: 34px;
-}
-
-@media (max-width: 620px) {
-  .command-form > .form-row {
-    grid-template-columns: 1fr;
-    gap: 12px;
-  }
 }

@@ -1,0 +1,99 @@
+/* Form spacing belongs to the field, not to the control. In particular,
+   composite path pickers must not add a second margin above their input. */
+.modal {
+  --field-height: 42px;
+  --field-gap: 8px;
+  --field-column-gap: 16px;
+}
+
+.modal .form-row {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: var(--field-column-gap);
+}
+.modal .form-stack > .form-row { margin: 0; }
+
+.modal .form-field,
+.modal .form-stack > label,
+.modal .form-row > label,
+.modal .command-manager-form > label,
+.modal .import-browser-path {
+  display: flex;
+  flex-direction: column;
+  gap: var(--field-gap);
+  min-width: 0;
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.modal .form-field > :is(input, select),
+.modal .form-stack > label > :is(input, select),
+.modal .form-row > label > :is(input, select),
+.modal .command-manager-form > label > input,
+.modal .import-browser-path > input {
+  display: block;
+  flex: none;
+  width: 100%;
+  min-width: 0;
+  height: var(--field-height);
+  margin: 0;
+  padding: 0 10px;
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.modal .form-stack > label > textarea,
+.modal .form-stack > label > .color-palette { margin: 0; }
+.modal .form-stack > label > textarea { width: 100%; min-width: 0; font-size: 12px; }
+
+.modal .input-with-action {
+  display: flex;
+  align-items: stretch;
+  gap: var(--field-gap);
+  min-width: 0;
+  height: var(--field-height);
+  margin: 0;
+}
+.modal .input-with-action > input {
+  flex: 1;
+  width: 0;
+  min-width: 0;
+  height: var(--field-height);
+  margin: 0;
+  padding: 0 10px;
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 20px;
+}
+.modal .input-with-action > button { flex: none; height: var(--field-height); margin: 0; padding-inline: 12px; }
+.modal .modal-actions > :is(.ghost-button, .primary-button) { height: var(--field-height); font-size: 12px; }
+
+.modal .import-destination { margin: 0; }
+.modal .import-source-tabs { position: sticky; top: 0; z-index: 3; padding-bottom: 4px; background: var(--panel); }
+.modal .kube-import-panel { padding-right: 12px; overscroll-behavior: contain; scrollbar-gutter: stable; scroll-padding-block: 90px 72px; scrollbar-width: thin; scrollbar-color: rgba(129,147,182,.35) transparent; }
+.kube-import-panel::-webkit-scrollbar { width: 6px; }
+.kube-import-panel::-webkit-scrollbar-thumb { border-radius: 8px; background: rgba(129,147,182,.35); }
+.modal .import-clipboard-area > .yaml-editor { margin: 0; padding: 12px; }
+.modal .import-content-label { min-height: 34px; }
+.modal .import-directory-actions .toolbar-button { height: var(--field-height); }
+.modal .import-footer { margin-top: 0; padding-bottom: 0; }
+.modal .command-manager-form .form-row { grid-template-columns: minmax(0, 1fr); margin-bottom: 16px; }
+.modal .manager-save-button { height: var(--field-height); font-size: 12px; }
+
+/* The command builder uses slightly denser controls, but its nested select
+   must have the same height as its neighboring input (the global select is 34px). */
+.command-form label { font-size: 11px; line-height: 18px; }
+.command-form > .form-row { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
+.command-form > .form-row > label { display: grid; grid-template-rows: 18px 40px; row-gap: 8px; min-width: 0; align-content: start; }
+.command-form > .form-row > label > :is(input, select) { width: 100%; min-width: 0; height: 40px; margin: 0; font-size: 12px; line-height: 20px; }
+.command-form > select { height: 40px; margin-top: 8px; font-size: 12px; }
+.command-form > .extra-args-field { display: flex; flex-direction: column; gap: 8px; }
+.command-form > .extra-args-field > input { height: 40px; margin: 0; font-size: 12px; }
+
+@media (max-width: 620px) {
+  .modal .form-row { grid-template-columns: minmax(0, 1fr); }
+  .command-form > .form-row { grid-template-columns: 1fr; gap: 12px; }
+}
