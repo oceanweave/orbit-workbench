@@ -563,7 +563,7 @@ export function CommandLibraryView({
             </div>
             <div className="command-list-tools">
               <label className="command-language-filter">
-                语言
+                <span>语言</span>
                 <select
                   aria-label="筛选命令语言"
                   value={language}

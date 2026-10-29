@@ -9,8 +9,17 @@ import {
   keymap,
   lineNumbers,
 } from '@codemirror/view'
-import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands'
-import { HighlightStyle, StreamLanguage, syntaxHighlighting } from '@codemirror/language'
+import {
+  defaultKeymap,
+  history,
+  historyKeymap,
+  indentWithTab,
+} from '@codemirror/commands'
+import {
+  HighlightStyle,
+  StreamLanguage,
+  syntaxHighlighting,
+} from '@codemirror/language'
 import { tags } from '@lezer/highlight'
 import { shell } from '@codemirror/legacy-modes/mode/shell'
 import { powerShell } from '@codemirror/legacy-modes/mode/powershell'
@@ -75,7 +84,8 @@ export function applyEditorChanges(
       text: inserted.toString().replace(/\n/g, separator),
     }),
   )
-  for (const edit of edits.reverse()) raw = raw.slice(0, edit.from) + edit.text + raw.slice(edit.to)
+  for (const edit of edits.reverse())
+    raw = raw.slice(0, edit.from) + edit.text + raw.slice(edit.to)
   return raw
 }
 
@@ -113,16 +123,45 @@ export function InlineCommandEditor({
   }
   useEffect(() => {
     if (!mount.current) return
+    let hoveredCopy: HTMLButtonElement | null = null
+    const clearHoveredCopy = () => {
+      hoveredCopy?.removeAttribute('data-hovered')
+      hoveredCopy = null
+    }
     class CopyMarker extends GutterMarker {
-      constructor(readonly number: number) {
+      constructor(
+        readonly number: number,
+        readonly current: boolean,
+      ) {
         super()
+        this.elementClass = current ? 'is-current-line' : ''
+      }
+      eq(other: CopyMarker) {
+        return this.number === other.number && this.current === other.current
       }
       toDOM() {
         const button = document.createElement('button')
-        button.textContent = '⧉'
+        const svg = document.createElementNS(
+          'http://www.w3.org/2000/svg',
+          'svg',
+        )
+        svg.setAttribute('viewBox', '0 0 24 24')
+        svg.setAttribute('aria-hidden', 'true')
+        svg.innerHTML =
+          '<rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>'
+        button.append(svg)
         button.type = 'button'
         button.title = '复制此行'
-        button.setAttribute('aria-label', `复制 ${latest.current.name} 第 ${this.number} 行`)
+        button.dataset.line = String(this.number)
+        // CodeMirror hides gutters from assistive technology. Keyboard users
+        // use the accessible "复制选中 / 当前行" action below the editor.
+        button.tabIndex = -1
+        button.setAttribute(
+          'aria-label',
+          `复制 ${latest.current.name} 第 ${this.number} 行`,
+        )
+        // Copying a line must preserve the editor's cursor and selection.
+        button.onmousedown = (event) => event.preventDefault()
         button.onclick = () =>
           latest.current.onCopy(
             commandLines(raw.current)[this.number - 1] ?? '',
@@ -141,7 +180,9 @@ export function InlineCommandEditor({
           drawSelection(),
           history(),
           languageCompartment.current.of(
-            languages[language] ? StreamLanguage.define(languages[language]!) : [],
+            languages[language]
+              ? StreamLanguage.define(languages[language]!)
+              : [],
           ),
           syntaxHighlighting(highlight),
           EditorView.contentAttributes.of({
@@ -161,6 +202,27 @@ export function InlineCommandEditor({
             ...historyKeymap,
           ]),
           EditorView.domEventHandlers({
+            mouseover: (event, view) => {
+              const target = event.target
+              if (!(target instanceof Element)) return
+              const line = target.closest('.cm-line')
+              const number = line
+                ? view.state.doc.lineAt(view.posAtDOM(line)).number
+                : null
+              const button =
+                number === null
+                  ? target.closest<HTMLButtonElement>(
+                      '.command-copy-gutter button',
+                    )
+                  : view.dom.querySelector<HTMLButtonElement>(
+                      `.command-copy-gutter button[data-line="${number}"]`,
+                    )
+              if (button === hoveredCopy) return
+              clearHoveredCopy()
+              hoveredCopy = button
+              hoveredCopy?.setAttribute('data-hovered', 'true')
+            },
+            mouseleave: clearHoveredCopy,
             compositionstart: () => {
               composing.current = true
               editor.current?.dom.setAttribute('data-composing', 'true')
@@ -173,6 +235,7 @@ export function InlineCommandEditor({
             },
           }),
           EditorView.updateListener.of((update) => {
+            if (update.docChanged) clearHoveredCopy()
             if (!update.docChanged || external.current) return
             raw.current = applyEditorChanges(raw.current, update.changes)
             latest.current.onChange(raw.current)
@@ -182,23 +245,45 @@ export function InlineCommandEditor({
           }),
           gutter({
             class: 'command-copy-gutter',
-            lineMarker: (view, line) => new CopyMarker(view.state.doc.lineAt(line.from).number),
+            lineMarker: (view, block) => {
+              const line = view.state.doc.lineAt(block.from)
+              return line.text.trim()
+                ? new CopyMarker(
+                    line.number,
+                    line.number ===
+                      view.state.doc.lineAt(view.state.selection.main.head)
+                        .number,
+                  )
+                : null
+            },
+            lineMarkerChange: (update) => update.selectionSet,
           }),
           EditorView.theme({
-            '&': { fontSize: '12px', backgroundColor: 'var(--panel-2)', color: 'var(--text)' },
+            '&': {
+              fontSize: '12px',
+              lineHeight: '1.9',
+              backgroundColor: 'var(--panel-2)',
+              color: 'var(--text)',
+            },
             '.cm-content': {
               fontFamily: 'ui-monospace, SFMono-Regular, Consolas, monospace',
               padding: '12px 0',
               minHeight: '90px',
+              lineHeight: '1.9',
             },
             '.cm-scroller': { overflow: 'auto', maxHeight: '380px' },
             '.cm-gutters': {
+              lineHeight: '1.9',
               backgroundColor: 'var(--panel-2)',
               color: 'var(--faint)',
               border: 'none',
             },
-            '.cm-activeLine, .cm-activeLineGutter': { backgroundColor: 'var(--panel-3)' },
-            '.cm-selectionBackground': { backgroundColor: '#6f8cff44 !important' },
+            '.cm-activeLine, .cm-activeLineGutter': {
+              backgroundColor: 'var(--panel-3)',
+            },
+            '.cm-selectionBackground': {
+              backgroundColor: '#6f8cff44 !important',
+            },
             '.cm-cursor': { borderLeftColor: 'var(--blue)' },
             '.cm-line': { padding: '0 12px' },
           }),
@@ -215,7 +300,9 @@ export function InlineCommandEditor({
   useEffect(() => {
     const parser = languages[language]
     editor.current?.dispatch({
-      effects: languageCompartment.current.reconfigure(parser ? StreamLanguage.define(parser) : []),
+      effects: languageCompartment.current.reconfigure(
+        parser ? StreamLanguage.define(parser) : [],
+      ),
     })
   }, [language])
   useEffect(() => {
@@ -224,7 +311,9 @@ export function InlineCommandEditor({
     const view = editor.current
     if (view) {
       external.current = true
-      view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: content } })
+      view.dispatch({
+        changes: { from: 0, to: view.state.doc.length, insert: content },
+      })
       external.current = false
       setStatus('已保存')
     }
@@ -253,7 +342,9 @@ export function InlineCommandEditor({
               const selection = view.state.selection.main
               latest.current.onCopy(
                 selection.empty
-                  ? commandLines(raw.current)[view.state.doc.lineAt(selection.head).number - 1]
+                  ? commandLines(raw.current)[
+                      view.state.doc.lineAt(selection.head).number - 1
+                    ]
                   : raw.current.slice(
                       rawEditorOffset(raw.current, selection.from),
                       rawEditorOffset(raw.current, selection.to),

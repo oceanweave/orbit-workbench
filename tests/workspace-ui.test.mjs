@@ -66,6 +66,42 @@ test('CodeMirror edits preserve original CRLF, mixed newline boundaries, tabs an
   } finally { await ui.close() }
 })
 
+test('inline line-copy follows hover and selection without changing text, including after line insertion', async () => {
+  const ui = await mountApp()
+  try {
+    await ui.click(ui.button('命令管理'))
+    await act(async () => { await ui.server.ssrLoadModule('/src/features/commands/CommandLibraryView.tsx') })
+    const content = document.querySelector('[aria-label="Pod 排查速查 命令正文"]')
+    const view = EditorView.findFromDOM(content)
+    const original = view.state.doc.toString()
+    const line = view.state.doc.line(2)
+    assert.equal(view.dom.querySelector('button[data-line="3"]'), null, 'blank lines have no copy icon')
+    await act(() => content.children[1].dispatchEvent(new ui.dom.window.MouseEvent('mouseover', { bubbles: true })))
+    assert.equal(view.dom.querySelector('button[data-hovered]').dataset.line, '2')
+    await act(() => content.dispatchEvent(new ui.dom.window.MouseEvent('mouseleave')))
+    assert.equal(view.dom.querySelector('button[data-hovered]'), null)
+    await act(() => view.dispatch({ selection: { anchor: line.from, head: line.to } }))
+    let copy = view.dom.querySelector('.is-current-line button')
+    assert.equal(copy.dataset.line, '2')
+    assert.equal(copy.tabIndex, -1, 'gutter must not create hidden keyboard stops')
+    assert.ok(copy.querySelector('svg'), 'use an outline icon instead of a dense text glyph')
+    const down = new ui.dom.window.MouseEvent('mousedown', { bubbles: true, cancelable: true })
+    await act(() => copy.dispatchEvent(down))
+    assert.equal(down.defaultPrevented, true, 'copy must not move the editing cursor')
+    await ui.click(copy)
+    assert.equal(ui.copied.at(-1), 'kubectl get pods -A -o wide')
+    assert.equal(view.state.selection.main.from, line.from)
+    assert.equal(view.state.selection.main.to, line.to)
+    assert.equal(view.state.doc.toString(), original)
+    await act(() => view.dispatch({ changes: { from: 0, insert: '# inserted\n' } }))
+    copy = view.dom.querySelector('.is-current-line button')
+    assert.equal(copy.dataset.line, '3', 'copy target follows the actual document line after edits')
+    await ui.click(copy)
+    assert.equal(ui.copied.at(-1), 'kubectl get pods -A -o wide')
+    assert.equal(view.dom.querySelector('button[data-line="4"]'), null)
+  } finally { await ui.close() }
+})
+
 test('inline command autosave waits for composition, preserves failed drafts across tools, and copies the visible draft', async () => {
   const ui = await mountApp()
   try {

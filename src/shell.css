@@ -139,8 +139,16 @@
 .inline-command-editor { overflow: hidden; border: 1px solid var(--line-soft); border-radius: 8px; }
 .inline-editor-footer { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; padding: 7px 12px; color: var(--muted); background: var(--panel); font-size: 10px; border-top: 1px solid var(--line-soft); }
 .inline-editor-footer > span:first-child { color: var(--green); margin-right: auto; }
-.command-copy-gutter button { background: none; color: var(--muted); opacity: .45; font-size: 17px; width: 28px; height: 22px; padding: 0; line-height: 1; }
-.command-copy-gutter button:hover, .command-copy-gutter button:focus-visible { opacity: 1; color: var(--blue); }
+.command-copy-gutter { min-width: 30px; }
+.command-copy-gutter button { display: inline-grid; place-items: center; vertical-align: top; width: 26px; height: 22px; padding: 4px; border-radius: 4px; background: transparent; color: var(--muted); opacity: 0; transition: opacity .12s, background .12s; }
+.command-copy-gutter button svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.command-copy-gutter .cm-gutterElement:hover button,
+.command-copy-gutter button[data-hovered],
+.cm-focused .command-copy-gutter .is-current-line button,
+.command-copy-gutter button:focus-visible { opacity: 1; }
+.command-copy-gutter button:hover, .command-copy-gutter button:focus-visible { color: var(--blue); background: var(--selection); }
+.command-copy-gutter button:focus-visible { outline: 2px solid var(--blue); outline-offset: -2px; }
+@media (prefers-reduced-motion: reduce) { .command-copy-gutter button { transition: none; } }
 @media (max-width: 1100px) {
   .app-shell .topbar { gap: 12px; padding-inline: 16px; }
   .topbar .nav-item { padding-inline: 10px; }

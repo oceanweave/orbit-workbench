@@ -1,7 +1,7 @@
 {
   "name": "orbit-workbench",
   "private": true,
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Local-first bookmark and kubeconfig workbench",
   "author": "Orbit Workbench",
   "type": "module",

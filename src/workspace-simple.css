@@ -1416,11 +1416,17 @@ textarea {
 }
 .app-shell .command-language-filter {
   display: flex;
+  flex-flow: row nowrap;
+  flex: 0 0 auto;
+  width: auto;
+  white-space: nowrap;
   align-items: center;
   gap: 8px;
   font-size: 11px;
   color: var(--muted);
 }
+.app-shell .command-language-filter > span { flex: 0 0 auto; }
+.app-shell .command-language-filter > select { flex: 0 0 128px; width: 128px; }
 .app-shell .command-list-tools {
   justify-content: flex-end;
   gap: 10px;
