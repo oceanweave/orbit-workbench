@@ -29,7 +29,6 @@ export function KubeImportPanel({ configs, groups, initialGroupId, onClose, onBu
   const [scanFinished, setScanFinished] = useState(false)
   const [visibleCount, setVisibleCount] = useState(100)
   const [groupId, setGroupId] = useState(initialGroupId === 'all' ? groups[0]?.id || '' : initialGroupId)
-  const [tags, setTags] = useState('')
   const [name, setName] = useState('')
   const [envName, setEnvName] = useState('')
   const [fileName, setFileName] = useState('')
@@ -144,7 +143,7 @@ export function KubeImportPanel({ configs, groups, initialGroupId, onClose, onBu
     if (source !== 'directory' && !/^[A-Za-z_][A-Za-z0-9_]*$/.test(envName.trim() || effectiveEnvName)) { setError('环境变量名称只能使用英文字母、数字和下划线，且不能以数字开头'); return }
     setBusy(true)
     try {
-      const options = { source, groupId, tags: [...new Set(tags.split(/[,，]/).map((tag) => tag.trim()).filter(Boolean))] }
+      const options = { source, groupId, tags: [] }
       if (source === 'clipboard') {
         inspectKubeconfig(content)
         if (!desktop) throw new Error('剪贴板导入需要桌面版将内容保存到本机文件，请在 Orbit Workbench 应用中导入')
@@ -166,7 +165,7 @@ export function KubeImportPanel({ configs, groups, initialGroupId, onClose, onBu
 
   return <div className="kube-import-panel">
     <div className="import-source-tabs" role="tablist" aria-label="导入方式">
-      {([{ id: 'file', title: '单个文件', hint: '选择后直接导入', icon: FileUp }, { id: 'directory', title: '目录导入', hint: '自动查找子目录', icon: FolderOpen }, { id: 'clipboard', title: '剪贴板导入', hint: '粘贴并保存到本机', icon: Clipboard }] as const).map(({ id, title, hint, icon: Icon }) => <button key={id} role="tab" aria-selected={source === id} disabled={busy} onClick={() => changeSource(id)}><Icon size={21} /><strong>{title}</strong><small>{hint}</small></button>)}
+      {([{ id: 'file', title: '单个文件', hint: '保留原文件', icon: FileUp }, { id: 'directory', title: '目录导入', hint: '包含子目录', icon: FolderOpen }, { id: 'clipboard', title: '剪贴板导入', hint: '保存为本机文件', icon: Clipboard }] as const).map(({ id, title, hint, icon: Icon }) => <button key={id} role="tab" aria-selected={source === id} disabled={busy} onClick={() => changeSource(id)}><Icon size={21} /><strong>{title}</strong><small>{hint}</small></button>)}
     </div>
 
     {source === 'file' && <div className="import-file-area">
@@ -197,7 +196,7 @@ export function KubeImportPanel({ configs, groups, initialGroupId, onClose, onBu
     {source !== 'directory' && (source === 'clipboard' || files.length > 0) && <div className="form-row import-name-row"><label>配置名称<input value={name} onChange={(event) => setName(event.target.value)} placeholder="例如：production" /></label><label>环境变量名称<input value={envName || effectiveEnvName} onChange={(event) => setEnvName(event.target.value)} placeholder="默认使用文件名大写" /></label></div>}
     {!desktop && source !== 'clipboard' && files.length > 0 && <label className="import-browser-path">{source === 'file' ? '本机完整文件路径' : '所选目录的本机完整路径'}<input value={browserPath} onChange={(event) => setBrowserPath(event.target.value)} placeholder={source === 'file' ? '~/.kube/config' : '~/.kube'} /><small>浏览器无法读取本机完整路径；桌面版会自动填写。</small></label>}
     {source === 'clipboard' && <div className="form-stack import-save-location"><div className="form-row"><label>保存目录<div className="input-with-action"><input aria-label="保存目录" value={directoryPath} onChange={(event) => setDirectoryPath(event.target.value)} placeholder="默认保存到应用本地数据目录" /><button className="toolbar-button" disabled={busy || !desktop} onClick={() => { void desktop?.pickDirectory().then((value) => { if (value) setDirectoryPath(value) }).catch(() => setError('选择目录失败')) }}><FolderOpen size={15} />选择</button></div></label><label>文件名<input value={fileName} onChange={(event) => setFileName(event.target.value)} placeholder={effectiveFileName} /></label></div><small>已有文件不会被覆盖。内容只保存到本机，保存目录须位于代码仓库以外。</small></div>}
-    <div className="import-destination form-row"><label className="form-field">导入到分组<select value={groupId} onChange={(event) => setGroupId(event.target.value)}>{groups.length ? groups.map((group) => <option key={group.id} value={group.id}>{group.name}</option>) : <option value="">自动创建“导入配置”分组</option>}</select></label><label className="form-field">添加标签（可选）<input aria-label="导入配置标签" value={tags} onChange={(event) => setTags(event.target.value)} placeholder="生产, 只读" /></label></div>
+    <div className="import-destination form-row"><label className="form-field">导入到分组<select value={groupId} onChange={(event) => setGroupId(event.target.value)}>{groups.length ? groups.map((group) => <option key={group.id} value={group.id}>{group.name}</option>) : <option value="">自动创建“导入配置”分组</option>}</select></label></div>
     <p className="import-privacy"><ShieldCheck size={15} />仅在本机读取与保存，不联网、不执行配置命令。</p>
     {error && <p className="import-error" role="alert">{error}</p>}
     <div className="modal-actions import-footer"><button className="ghost-button" disabled={busy} onClick={onClose}>取消</button><button className="primary-button" disabled={busy || (source === 'clipboard' ? !clipboardInfo.metadata || !desktop : !selectedFiles.length)} onClick={() => void importSelected()}>{busy ? <LoaderCircle size={16} className="import-spinner" /> : <FileUp size={16} />}{busy ? '处理中…' : source === 'directory' ? `导入选中配置${selectedFiles.length ? `（${selectedFiles.length}）` : ''}` : '导入配置'}</button></div>

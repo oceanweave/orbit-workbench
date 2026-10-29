@@ -135,7 +135,7 @@ test('command library: CRUD, exact copy, composition-safe submission, drag, bulk
     await click(button('确认删除'))
     assert.equal(store().snippets.length, 4, 'deleting a folder preserves commands')
     assert.ok(store().snippets.filter((item) => [custom.id, 'snippet-git'].includes(item.id)).every((item) => item.groupId === ''))
-    await fill(document.querySelector('input[aria-label="搜索命令"]'), 'updated')
+    await fill(document.querySelector('.global-search input'), 'updated')
     assert.equal(document.querySelectorAll('[data-command-id]').length, 1)
     await click(document.querySelector('input[aria-label="选择命令 测试多行"]'))
     await click(button('删除'))

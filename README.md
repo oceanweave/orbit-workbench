@@ -1,148 +1,98 @@
 # Orbit Workbench
 
-Orbit Workbench 是一个本地优先的书签、kubeconfig 和常用命令管理工作台。使用 React + TypeScript + Vite 构建界面，通过 Electron 打包 macOS / Windows 桌面应用。
+本地优先的链接看板、Kubeconfig 和命令管理工具。React + TypeScript + Electron，支持 macOS 和 Windows。
 
-## 命令管理
+## 0.3.0：围绕分组，简化使用
 
-顶部的「命令管理」提供独立的命令记录库，与 kubeconfig 的 kubectl 模板分开保存：
+- **移除标签管理**：不再提供标签添加、编辑、批量操作、筛选或标签搜索。旧标签字段保留在本地数据和 JSON 备份中，避免升级造成数据丢失。
+- **统一工作台**：顶部切换模块，左侧目录可拖宽或收起，右侧专注当前内容。默认柔和灰绿亮色，保留暗色主题和原有主题偏好；取消大标题宣传区、统计卡片及重复工具栏。
+- **链接看板**：看板用网格图标，内容分组使用列表树图标。紧凑链接行显示名称和域名，点击打开，双击弹窗修改名称、地址、分组与备注；展开查看完整地址和多行备注。复制、展开、更多操作各自独立，不触发跳转。
+- **Kubeconfig**：配置直接放进左侧可折叠环境分组，右侧显示选中配置、来源路径、环境变量、所属分组和命令。无需在分组、配置列表和详情三栏之间来回寻找。
+- **命令管理**：保留分组、拖拽、正文着色编辑及逐行/整段复制；搜索统一使用顶部搜索框，取消重复搜索入口。
+- **低频管理收进菜单**：看板与分组支持双击编辑、右键或更多菜单。批量移动、删除、导出按需进入，不常驻一排按钮。
 
-- 新增、编辑、复制副本和删除多行命令，支持备注、分组与语言选择。
-- Shell/Bash、PowerShell、SQL、Python、JavaScript、JSON、YAML 和纯文本；代码块提供行号、语法配色、浅色注释及亮暗主题适配。
-- 每行左侧可复制原始行；顶部复制整段，多选后复制选中记录，「复制当前列表」复制当前筛选结果。复制不包含行号或提示符，保留注释、缩进和空行；逐行复制按物理行处理，跨行续写命令请复制整段。
-- 分组可重命名、调色和排序；拖动命令右侧手柄可排序或移入左侧分组，悬停目标明确高亮；也可直接通过记录上的分组菜单移动。
-- 多选记录可批量复制、移动、删除；删除分组会保留记录到「未分组」。支持名称、内容、备注和语言筛选，顶部搜索在命令页搜索所有命令分组。
-- 正文直接编辑并着色，450ms 防抖保存，`⌘ / Ctrl + S` 手动保存；编辑器支持选中文字/当前行复制，保留 CRLF、Tab、空行及末尾换行。名称与备注编辑表单支持 `⌘ / Ctrl + Enter` 保存，中文输入法候选确认不会误提交；保存失败时保留编辑内容。每条上限 100,000 字符，列表分批展示，避免大量代码同时高亮。
+具体操作和验收范围见 [简洁工作台交互说明](docs/ui-workflows.md)。
 
-记录只保存在本机，不执行命令。工作区 JSON 备份包含命令库；个人命令、书签和 kubeconfig 不会随源代码或安装包发布。
+## 常用操作
 
-交互设计参考 [pet](https://github.com/knqyf263/pet) 的命令片段记录与 [massCode](https://masscode.io/documentation/code/) 的分组代码库布局，正文编辑使用 [CodeMirror 6](https://codemirror.net/)，弹窗预览使用 [Prism](https://prismjs.com/)。
+| 目的 | 操作 |
+| --- | --- |
+| 打开链接 | 单击链接正文；鼠标双击会优先进入编辑，不同时打开浏览器 |
+| 修改链接 | 双击正文，或“更多 → 编辑链接” |
+| 看完整地址、备注 | 点击链接行的展开箭头 |
+| 新建看板 | 左侧“链接看板”旁的加号 |
+| 新建/编辑分组 | 内容区“添加分组”；分组标题旁更多菜单；双击名称编辑 |
+| 排序/移动 | 拖动手柄；插入线表示前后排序，分组中央高亮表示归组；支持多层目录及跨看板移动 |
+| 批量链接操作 | 当前看板更多菜单 → 选择多个链接 |
+| Kubeconfig 导入 | 左侧加号或“导入配置”，选择文件、目录递归扫描或剪贴板 |
+| 配置查看与修改 | 双击配置，或右侧“查看配置”；正文默认只读，主动切换编辑后保存 |
+| 配置批量操作 | 左侧底部配置管理菜单 → 选择多个配置 |
+| 主题、设置、帮助 | 右上角应用选项菜单 |
+| 导出、恢复、存储位置 | 看板底部管理菜单，或顶部“本机存储” |
 
-## 快速开始
+## 数据与文件
+
+- 数据在本机自动保存；不上传书签、kubeconfig 或命令，不执行用户保存的命令或 kubeconfig 认证插件。
+- 书签 HTML 用于 Chrome / Edge / Firefox 等浏览器互通，保留多层目录。JSON 用于本工具的选择备份及恢复；完整工作区备份可能包含 kubeconfig 正文，默认仅选择书签。
+- 配置导入按 YAML / JSON 内容识别，支持无后缀和 `.txt` 等任意文件名。目录可递归扫描，识别后勾选导入，重复路径跳过。单文件/目录导入引用原文件，剪贴板内容独占保存到本机目录，不覆盖已有文件。
+- 写回配置时校验内容与外部变更，先创建备份再在原目录替换；失败保留编辑草稿。移除记录不删除原文件。
+- 命令支持命名变量、仅本次、当前终端会话三种格式和 Bash/Zsh、PowerShell。Context/命名空间留空才表示配置默认，显式输入 `default` 仍生成参数。
+- 顶部撤销用于整理、删除和导入等库操作，与命令正文的文本 Undo 分开；不撤销磁盘源文件写回。
+
+## 开发与验证
+
+需要 Node.js 22.12+、npm 10+。
 
 ```bash
-npm install
+npm ci
 npm run dev
 ```
 
-打开终端输出的本地地址即可使用。应用数据保存在当前浏览器或 Electron 用户目录的 `localStorage` 中。
-
-CI 和需要严格复现依赖的环境使用 `npm ci`。
-
-代码仓库：<https://github.com/oceanweave/orbit-workbench>
-
-生产构建：
-
-```bash
-npm run build
-```
-
-## macOS 应用
-
-当前仓库包含 Electron 打包配置，Apple Silicon Mac 可以生成并安装本地 `.app`：
-
-```bash
-npm run app:dir
-open "release/local-macos/mac-arm64/Orbit Workbench.app"
-```
-
-也可以生成 DMG：
-
-```bash
-npm run app:dmg
-```
-
-本地包在 `release/local-macos/`，文件名带 `-local`，使用完整 ad-hoc 签名，仅用于本机开发验证。它不具备其他 Mac 所需的 Developer ID 信任与 Apple 公证，不能作为正式分发包。不会关闭 Gatekeeper 或清除下载隔离属性。
-
-正式分发使用 `npm run app:release:mac`，生成 Apple Silicon（arm64）及 Intel（x64）两个 DMG，必须提供 Developer ID Application 证书及公证凭据。缺少凭据、签名不完整、公证失败或 Gatekeeper 拒绝均终止发布。配置与验收步骤见 [macOS 签名与分发](docs/macos-distribution.md)。
-
-## Windows 应用
-
-Windows 版本使用 Electron Builder 生成 x64 安装包，目标是 Windows 10 及 Windows 11。Windows x64 安装包可以在两套系统上使用；构建产物不包含真实 kubeconfig，也不会在构建阶段执行集群命令。
-
-```bash
-# 生成 NSIS 安装程序（推荐分发）
-npm run app:win:nsis
-
-# 生成免安装目录，用于 smoke test
-npm run app:win:dir
-
-# 生成 zip 便携包
-npm run app:win:zip
-```
-
-产物位于 `release/`，文件名类似 `Orbit-Workbench-${version}-x64.exe` 和 `Orbit-Workbench-${version}-x64.zip`。macOS 可以交叉构建这些产物；本机只验证了打包和文件结构，未在 Windows 10/11 虚拟机或实体机上运行安装器。提交发布前应在 `windows-latest` CI 或实际 Windows 10/11 环境执行安装、启动、文件选择和 kubeconfig 写回 smoke test。
-
-配置 Apple 签名与公证 Secrets 后，推送 `v*` tag 会在 macOS 和 Windows runner 上分别构建，通过检查后创建 GitHub Release，上传两种架构的 DMG、NSIS EXE、ZIP 及 SHA256SUMS.txt。未配置凭据时 macOS 任务失败，Release 不会发布，不能用本地包代替正式包。构建统一使用 Node.js 22；生成文件和上传发布分开执行。
-
-## 0.2.0 工作流优化
-
-- 顶部切换工具；各工具保留目录、选择和会话草稿。左侧目录可拖宽、键盘调整或收起，不再占用一列常驻主导航。
-- 看板外层分类与多层分组分开：分类增删改、颜色、排序及拖入；「整理看板」支持分类迁移、多选、复制、删除和选择导出。旧看板自动位于未分类，原 ID 不变。
-- 内容默认按可折叠分组面板展示，也可切回平铺。收展状态保存在本机；搜索临时展开匹配路径。分组可编辑颜色/备注、管理子树、批量移动/删除（保留内容），也可将完整子树复制或移动为新看板。
-- 看板/分组名称可双击打开编辑，右键提供相关操作。链接名称点击打开，铅笔或右键名称进入就地编辑，备注保持直接编辑；打开区域与管理按钮分开。
-- 目录首末与条目间增加真实空白放置区。排序插入线与中央归组高亮分开，多选链接/配置/命令可整体拖入分组。悬停展开是临时状态，取消拖动不改保存的收展设置。
-- 「备份 JSON」打开范围选择，默认仅书签；完整工作区明确提示包含 kubeconfig 正文。HTML/JSON 导入先预览树与数量、勾选集合，再提交；支持必要祖先保留、URL 去重、版本/引用校验、合并和替换恢复。替换前保存本机恢复副本并下载备份，可从「本机存储」恢复上一次替换前的数据。
-- 顶部「撤销库操作」恢复最近的记录整理、移动、删除或导入；与代码编辑器的文本 Undo 独立。撤销历史仅保留本次应用会话，最多 30 次并有内存限制；不会撤销磁盘源文件写回。
-- kubeconfig 支持命名变量、单次命令、当前终端会话三种复制格式及 Bash/Zsh、PowerShell 选择。Context/Namespace 留空才表示使用配置默认；显式 `default` 仍输出参数。路径和参数按 Shell 转义，环境变量禁止系统保留名与重复名。
-- 配置详情区分查看和编辑。保存等待源文件写回结果，失败保留草稿；写回先验证 YAML 和源文件变化，再备份、写临时文件并同目录替换。相对证书路径所在目录不变。详情可复制正文、定位源文件。
-- 点击顶部「本机存储」查看真实 Electron userData 路径、复制或打开目录、备份和恢复。浏览器模式明确说明使用站点存储。
-
-多存储空间仍是后续增强，不等同当前已实现的多用户同步。macOS 原生窗口、Windows 10/11 安装与真实指针拖拽需分别验收；JSDOM 事件回归不代表系统级拖拽验收通过。
-
-## 已实现
-
-- 书签看板：看板、分组、标签、搜索、紧凑链接行、打开链接、复制链接、删除链接；名称、网址和备注支持行内编辑。
-- 全局搜索：顶部搜索框按 Enter 后搜索所有看板与 kubeconfig，结果页可筛选类型、批量选择，并将书签复制/移动到新看板或 kubeconfig 复制/移动到新分组；复制保留原数据，移动会更新原归属。
-- 组织能力：分组可继续嵌套子分组，左侧目录树逐层展开/收起，父分组计数和筛选包含全部子分组；通过完整路径选择分组，支持新建子分组、重命名和调整上级目录。链接可拖放到任意层级，悬停折叠目录会展开；删除分组时保留链接，子分组提升一级。标签筛选支持多选并按全部匹配，额外标签以 `+N` 汇总。
-- 拖拽整理：看板上下排序；分组上/下边缘显示插入线，用于调整同级顺序，中央高亮表示移入该分组成为子分组。分组拖到看板标题可提升到根目录或跨看板移动，所有子分组与链接一起保留，并阻止移入自身/后代。链接可拖到其他链接前后排序并采用目标分组，拖到看板标题时进入根目录“未分组”。排序与层级自动在本机保存；输入框保持文本编辑，右侧手柄可明确发起拖动。
-- 浏览器书签导入导出：支持 Netscape Bookmark HTML，顶层文件夹映射为看板，其余文件夹完整保留父子层级、空目录及同名分支。历史平铺数据继续兼容；已经被旧版摊平的目录无法推断原父子关系，需重新导入原始 HTML 恢复层级。
-- 看板导出：`导出当前` 和 `导出全部` 生成 Netscape Bookmark HTML，可直接导入 Chrome、Edge、Firefox 等浏览器；`备份 JSON` 可选择仅书签、仅命令或完整工作区，并通过导入入口恢复。
-- Kubeconfig：配置文件路径、环境分组、标签、Context 选择、详情编辑和拖拽归类；详情页可查看和修改原始 YAML，并在桌面版写回源文件。
-- Kubeconfig 分组与配置支持拖拽排序，配置可拖入其他环境分组。提供手动、名称、创建时间三种排序；从自动排序视图拖动配置后按当前可见顺序切换为手动排序，并保存偏好。
-- Kubeconfig 导入：提供单个文件、目录递归扫描、剪贴板三个入口。不按后缀筛选，按 YAML / JSON 内容识别；目录扫描后可勾选配置并批量导入到指定分组，重复路径自动跳过。Context、集群地址、文件名及环境变量名称自动生成，仍可调整名称和标签。文件与目录导入只读取原文件。
-- 剪贴板内容默认保存到应用本地数据目录下的 `kubeconfigs/`，可选择仓库以外的其他目录；文件权限为 `0600`（macOS/Linux），同名文件不会被覆盖。不会上传配置或执行其中的认证插件。浏览器模式导入文件需补充完整本机路径；剪贴板保存文件需要桌面版。
-- 命令生成器：点击任意 kubeconfig 后选择 Context、命令模板、命名空间和附加参数，实时生成并复制；支持环境变量名称、自定义命令和默认命令：
-
-  ```bash
-  PRODUCTION="$HOME/.kube/prod.config"
-  KUBECONFIG="$PRODUCTION" kubectl get pods -o wide -n 'dev'
-  ```
-
-- 常用命令模板：Pod、Node、Service、Deployment、rollout、describe、logs、资源排行和按创建时间排序等，并支持自定义命令。
-- 批量管理：书签条目和 kubeconfig 都支持选择、批量移动、批量删除和批量标签操作（追加、移除、替换）；单条标签点击即可编辑，管理反馈会显示在触发操作的指针附近。
-- 本地持久化：数据保存到浏览器 `localStorage`，不上传 kubeconfig 内容。
-- 界面主题与密度：支持暗色 / 亮色主题以及舒适 / 紧凑信息密度，选择会自动保存到本机；筛选栏提供清除筛选入口。
-- 响应式布局：桌面、窄桌面和移动宽度均有布局切换。
-- 桌面发布：Electron macOS arm64 `.app`/DMG，以及 Windows x64 NSIS 安装程序和 zip 便携包。
-
-## 项目结构和协作
-
-核心代码集中在 `src/`，Electron 主进程位于 `electron/`。Kubeconfig 导入界面位于 `src/components/KubeImportPanel.tsx`，跨端解析和去重位于 `shared/kubeconfig.mjs`，本地目录遍历和文件保存位于 `electron/kube-files.cjs`。`npm test` 在系统临时目录创建纯模拟文件，覆盖无后缀、`.txt`、多层目录、重复识别、权限和仓库隔离；测试结束后清理临时目录，真实配置不进入仓库。
-
-- [架构说明](docs/architecture.md)：数据流、持久化键、命令生成和桌面打包边界。
-- [贡献指南](CONTRIBUTING.md)：开发、验证、提交和发布流程。
-- [版本记录](CHANGELOG.md)：当前版本能力和已知限制。
-
-提交前运行：
+提交前：
 
 ```bash
 npm run check
+npm test
 npm run build
 git diff --check
 ```
 
-## 后续增强
+测试使用隔离的 JSDOM、localStorage 和系统临时目录，只创建模拟配置，不读取个人书签、命令和真实 kubeconfig。系统级拖拽与跨平台安装需要单独验收，不能用合成拖拽事件代替。
 
-1. 多存储目录、只读/离线库与跨库复制；先验证备份、来源隔离和失败恢复，再开放迁移。
-2. macOS Keychain / Windows Credential Manager 与证书有效期状态。
-3. 针对 macOS、Windows 10 和 Windows 11 的真实安装、指针拖拽、文件权限和系统文件选择回归。
+## macOS 打包
 
-## 发布与本地数据隔离
+```bash
+npm run app:dir
+npm run app:open
+npm run app:dmg
+```
 
-`v*` tag 触发 GitHub Actions 生成签名并公证的 DMG、Windows EXE 和 ZIP，再发布到 GitHub Release。发布前会运行全部测试并对实际 `app.asar` 检查：只允许构建资源、应用模块及安装依赖，检测到本地导入文件或浏览器存储则终止发布。可手动检查本地包：
+本机开发包位于 `release/local-macos/`，使用完整 ad-hoc 签名，DMG 带 `-local` 后缀。它不具备 Apple 公证信任，不能冒充跨 Mac 正式分发包。
+
+正式发布使用 `npm run app:release:mac`，生成 arm64 / x64 DMG，必须配置 Developer ID Application 证书与 Apple 公证凭据；缺少凭据或验收失败会终止发布。详见 [macOS 签名与分发](docs/macos-distribution.md)。未配置 Apple 凭据时不会生成正式公证包。
+
+## Windows 打包
+
+```bash
+npm run app:win
+```
+
+生成 x64 NSIS EXE 与 ZIP，目标 Windows 10 / 11。CI 能验证构建、回归与归档内容，不等同已完成两套系统的实际安装、文件选择和原生拖拽测试。Windows 代码签名暂未配置。
+
+配置 Apple 凭据后，`v*` tag 触发双平台发布；macOS 与 Windows 检查均成功后上传 DMG、EXE、ZIP 和 SHA256SUMS.txt。个人数据不纳入 Git、测试或安装包。可手动检查实际归档：
 
 ```bash
 npm run package:audit -- "release/local-macos/mac-arm64/Orbit Workbench.app/Contents/Resources/app.asar"
 ```
 
-用户的 kubeconfig、书签、命令记录及备份只保留在本机，不纳入 Git 或安装包；代码中的公开链接和无凭据配置仅用于演示和测试。源码与模拟测试可以上传，真实数据不要放入项目目录。
+## 代码和文档
+
+- `src/App.tsx`：应用壳、持久化、全局搜索和数据交换。
+- `src/features/bookmarks/`：看板工作流、紧凑链接和编辑弹窗。
+- `src/features/kube/`：配置工作流、原文详情和常用命令模板管理。
+- `src/features/commands/`：独立命令库及 CodeMirror 编辑器。
+- `src/components/`：目录树、分组面板、导入、菜单、弹窗和共用控件。
+- `src/workspace-simple.css`：统一色彩与简洁工作台布局；`shared/` 存放可测试的数据规则；`electron/` 存放受限本机文件接口。
+- [架构说明](docs/architecture.md) · [交互说明](docs/ui-workflows.md) · [贡献指南](CONTRIBUTING.md) · [版本记录](CHANGELOG.md)
+
+仓库：[oceanweave/orbit-workbench](https://github.com/oceanweave/orbit-workbench)。多存储空间、同步与 SSH 不在当前版本范围内。

@@ -1,12 +1,12 @@
 import { Check } from 'lucide-react'
 export const palette = [
-  { color: '#6f8cff', name: '鸢尾蓝' },
-  { color: '#32b99a', name: '薄荷绿' },
-  { color: '#e4a04c', name: '暖琥珀' },
-  { color: '#ad7ce1', name: '藤紫' },
-  { color: '#df7890', name: '蔷薇' },
-  { color: '#52a6c9', name: '湖蓝' },
-  { color: '#8290a6', name: '岩灰' },
+  { color: '#627e91', name: '雾蓝' },
+  { color: '#5f826c', name: '鼠尾草绿' },
+  { color: '#a08b59', name: '麦秆黄' },
+  { color: '#8d7897', name: '灰紫' },
+  { color: '#a57474', name: '陶粉' },
+  { color: '#668c8b', name: '青灰' },
+  { color: '#7b827a', name: '岩灰' },
 ]
 export function ColorPicker({
   value,
@@ -31,7 +31,11 @@ export function ColorPicker({
             {value === color && <Check size={17} />}
           </button>
         ))}
-        <button type="button" className="color-default" onClick={() => onChange(palette[0].color)}>
+        <button
+          type="button"
+          className="color-default"
+          onClick={() => onChange(palette[0].color)}
+        >
           默认
         </button>
       </div>

@@ -3,6 +3,7 @@ export type LinkItem = {
   title: string
   url: string
   groupId: string
+  /** Legacy metadata retained for backup compatibility; no tag management UI. */
   tags: string[]
   description?: string
   addedAt: string
@@ -24,6 +25,7 @@ export type BookmarkBoard = {
   name: string
   description: string
   categoryId?: string
+  /** Legacy metadata retained for backup compatibility; no tag management UI. */
   tags: string[]
   groups: BookmarkGroup[]
   links: LinkItem[]
@@ -52,6 +54,7 @@ export type KubeConfig = {
   context: string
   contexts?: string[]
   server: string
+  /** Legacy metadata retained for backup compatibility; no tag management UI. */
   tags: string[]
   createdAt?: string
   updatedAt: string

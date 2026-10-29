@@ -3,7 +3,7 @@
 ## 开发环境
 
 - Node.js 22.12 或更高版本
-- macOS 本地打包需要 Apple Silicon 环境；Windows 打包可在后续补充对应目标
+- macOS 本地开发包默认面向 Apple Silicon；正式 macOS 分发需签名身份。Windows 使用已有 x64 NSIS / ZIP 打包命令，安装运行另行验收。
 
 首次运行：
 
@@ -27,7 +27,7 @@ git diff --check
 
 ## 分支和提交
 
-- `main` 保持可构建状态。
+- 远程默认分支 `master` 保持可构建状态。
 - 功能使用 `feat:`，修复使用 `fix:`，文档使用 `docs:`，重构使用 `refactor:`。
 - 一个提交尽量只包含一个完整目的；不要把本地 `dist/`、`release/`、日志或个人书签文件提交进仓库。
 - 提交前确认没有把真实 kubeconfig 内容、证书、Token 或私有地址写入示例数据。
@@ -77,9 +77,9 @@ git remote -v
 git remote set-url origin git@github.com:oceanweave/orbit-workbench.git
 ```
 
-推送前先同步远程 `main`，确认没有冲突后再推送：
+推送前先同步远程 `master`，确认没有冲突后再推送：
 
 ```bash
 git fetch origin
-git push -u origin main
+git push origin HEAD:master
 ```

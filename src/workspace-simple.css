@@ -1,0 +1,1479 @@
+/* Quiet, shared workspace surfaces. Feature CSS describes structure; these
+   tokens and scoped rules keep all three tools on the same visual scale. */
+:root,
+:root[data-theme='light'],
+.app-shell[data-theme='light'] {
+  --bg: #eff0ed;
+  --panel: #f4f5f1;
+  --panel-2: #e9ece7;
+  --panel-3: #dde5de;
+  --line: #d3d9d1;
+  --line-soft: #dee2db;
+  --text: #303b34;
+  --muted: #67736a;
+  --faint: #7b867e;
+  --blue: #527a66;
+  --blue-soft: #4c715e;
+  --green: #527a66;
+  --orange: #9a7945;
+  --purple: #7c7292;
+  --danger: #b44f4a;
+  --row-bg: #fafbf7;
+  --selection: #dbe5dc;
+  --code-bg: #27332d;
+  --code-text: #dfebe2;
+}
+:root[data-theme='dark'],
+.app-shell[data-theme='dark'] {
+  --bg: #202723;
+  --panel: #262f29;
+  --panel-2: #2d372f;
+  --panel-3: #364339;
+  --line: #414c42;
+  --line-soft: #354138;
+  --text: #e0e8df;
+  --muted: #a8b6a9;
+  --faint: #8e9d90;
+  --blue: #9bb99f;
+  --blue-soft: #bad1ba;
+  --green: #9bb99f;
+  --orange: #c9aa75;
+  --purple: #b4a9c5;
+  --danger: #e39a8e;
+  --row-bg: #303a32;
+  --selection: #3b5040;
+  --code-bg: #1d2821;
+  --code-text: #d9e8d8;
+}
+body {
+  background: var(--bg);
+}
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
+}
+.app-shell,
+.app-shell[data-theme='light'],
+.app-shell[data-theme='dark'] {
+  background: var(--bg);
+  color: var(--text);
+}
+.app-shell .main-area {
+  display: flex;
+  flex-direction: column;
+}
+.app-shell[data-theme] .topbar {
+  height: 62px;
+  min-height: 62px;
+  padding: 0 20px;
+  gap: 22px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--line);
+  backdrop-filter: none;
+}
+.topbar .brand-mark {
+  gap: 9px;
+  min-width: 176px;
+  color: var(--muted);
+}
+.topbar .brand-mark strong {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+.topbar .brand-mark > svg {
+  color: var(--blue);
+}
+.topbar .primary-nav {
+  flex: 0 1 420px;
+  padding: 3px;
+  gap: 2px;
+  background: var(--panel-2);
+  border: 1px solid var(--line-soft);
+  border-radius: 8px;
+}
+.app-shell .topbar .nav-item {
+  flex: 1;
+  justify-content: center;
+  min-height: 30px;
+  padding: 0 13px;
+  font-size: 12px;
+  gap: 7px;
+  color: var(--muted);
+  border-radius: 5px;
+  box-shadow: none;
+  background: transparent;
+}
+.topbar .nav-item span {
+  flex: 0 1 auto;
+}
+.app-shell .topbar .nav-item.active {
+  background: var(--row-bg);
+  color: var(--text);
+  box-shadow: 0 1px 3px #27332d14;
+}
+.app-shell .topbar .nav-item:hover {
+  color: var(--text);
+  background: var(--panel);
+}
+.app-shell .topbar-actions {
+  gap: 7px;
+  min-width: 0;
+  flex: 1;
+  justify-content: flex-end;
+}
+.app-shell .topbar .global-search {
+  width: min(250px, 22vw);
+  height: 32px;
+  border: 1px solid var(--line);
+  background: var(--panel-2);
+  border-radius: 7px;
+  box-shadow: none;
+  padding-inline: 9px;
+}
+.app-shell .global-search input {
+  background: transparent;
+  color: var(--text);
+  font-size: 11px;
+  border: 0;
+  margin: 0;
+  padding-inline: 0;
+}
+.app-shell .global-search input:focus {
+  outline: none;
+  box-shadow: none;
+}
+.app-shell .global-search kbd {
+  color: var(--faint);
+  background: var(--panel);
+  border-color: var(--line);
+}
+.storage-shortcut {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  background: none;
+  color: var(--muted);
+  padding: 5px;
+  font-size: 11px;
+  white-space: nowrap;
+}
+.app-shell .module-page {
+  flex: 1;
+  height: auto;
+  min-height: 0;
+  overflow: auto;
+}
+.app-shell .content-wrap.simple-workspace {
+  height: 100%;
+  padding: 0;
+  overflow: hidden;
+}
+.app-shell .simple-workspace .workspace-grid,
+.app-shell .simple-workspace .kube-grid {
+  height: 100%;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: var(--directory-width, 280px) minmax(0, 1fr);
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: var(--panel);
+  overflow: hidden;
+  gap: 0;
+}
+.app-shell .simple-workspace .collection-sidebar,
+.app-shell .simple-workspace .kube-groups {
+  position: relative;
+  top: auto;
+  height: 100%;
+  max-height: none;
+  min-height: 0;
+  min-width: 0;
+  padding: 17px 12px 12px;
+  background: var(--panel-2);
+  border-right: 1px solid var(--line);
+  border-radius: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: visible;
+}
+.simple-workspace .side-section-header {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 15px;
+  padding: 0 29px 0 8px;
+  min-height: 30px;
+}
+.simple-workspace .side-section-header > span {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+.simple-workspace .side-section-header b {
+  font-size: 11px;
+  color: var(--faint);
+  font-weight: 500;
+}
+.simple-workspace .side-section-header > button {
+  margin-left: auto;
+}
+.app-shell .directory-toggle {
+  top: 17px;
+  right: 7px;
+  background: transparent;
+  color: var(--faint);
+}
+.directory-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  gap: 8px;
+  padding: 13px 4px 0;
+  margin-top: 10px;
+  border-top: 1px solid var(--line);
+}
+.app-shell .directory-footer .toolbar-button {
+  font-size: 12px;
+  height: 31px;
+  min-height: 31px;
+  background: transparent;
+  box-shadow: none;
+}
+.simple-workspace .board-tree,
+.kube-directory-tree {
+  flex: 1;
+  min-height: 0;
+  max-height: none;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+.simple-workspace .board-category {
+  margin: 0 0 12px;
+}
+.simple-workspace .category-heading {
+  padding: 5px 8px;
+  color: var(--muted);
+}
+.app-shell .collection-sidebar .tree-item {
+  gap: 6px;
+  min-height: 37px;
+  height: auto;
+  padding: 5px 6px;
+  margin-block: 3px;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  box-shadow: none;
+  border-color: transparent;
+}
+.app-shell[data-theme] .collection-sidebar .tree-item.selected {
+  background: var(--selection);
+  color: var(--text);
+  box-shadow: none;
+}
+.app-shell .collection-sidebar .tree-item:hover {
+  background: var(--selection);
+}
+.collection-sidebar .tree-item > span:not(.tree-item-actions) {
+  font-size: 13px;
+}
+.collection-sidebar .tree-item > .tree-board-icon {
+  color: var(--blue);
+  flex: 0 0 16px;
+}
+.collection-sidebar .tree-item b {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--faint);
+}
+.collection-sidebar {
+  --folder-indent: 18px;
+  --folder-guide: var(--line);
+}
+.app-shell .bookmark-folder-tree {
+  padding-bottom: 8px;
+}
+.app-shell .bookmark-folder-row {
+  min-height: 33px;
+  border-radius: 5px;
+  padding-block: 2px;
+  gap: 3px;
+  color: var(--muted);
+}
+.app-shell .bookmark-folder-row.selected {
+  background: var(--selection);
+  color: var(--text);
+}
+.app-shell .folder-select {
+  font-size: 12px;
+}
+.app-shell .folder-select > svg {
+  color: var(--blue);
+}
+.app-shell .folder-edit {
+  width: 22px;
+  color: var(--muted);
+}
+.app-shell .sort-drag-handle {
+  color: var(--faint);
+  background: none;
+  flex: 0 0 23px;
+  width: 23px;
+  height: 30px;
+  border: 0;
+  opacity: 0.55;
+}
+.app-shell .sort-drag-handle:hover,
+.app-shell .drag-sort-row:hover > .sort-drag-handle {
+  opacity: 1;
+  background: var(--panel-3);
+}
+.app-shell .simple-workspace .board-stage,
+.app-shell .simple-workspace .command-panel {
+  min-width: 0;
+  min-height: 0;
+  padding: 22px 28px 30px;
+  overflow: auto;
+  background: var(--panel);
+  border: 0;
+  container-type: inline-size;
+}
+.simple-stage-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.simple-stage-title {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  flex: 1;
+}
+.simple-stage-title > svg {
+  color: var(--blue);
+  flex-shrink: 0;
+}
+.simple-stage-title h1 {
+  margin: 0;
+  color: var(--text);
+  font-size: 18px;
+  font-weight: 650;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+.simple-stage-title > span {
+  font-size: 11px;
+  color: var(--faint);
+  white-space: nowrap;
+}
+.simple-stage-actions {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.simple-stage-description {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.6;
+  margin: 0 0 19px 28px;
+}
+.simple-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  font-size: 11px;
+  margin: 10px 0 15px;
+  color: var(--muted);
+}
+.simple-breadcrumb > span {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+}
+.simple-breadcrumb button {
+  background: none;
+  color: var(--muted);
+  padding: 4px;
+}
+.simple-breadcrumb button[aria-current] {
+  color: var(--text);
+}
+.simple-query-result {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  font-size: 12px;
+  color: var(--muted);
+  margin: 12px 0;
+}
+.app-shell .bookmark-panels {
+  margin-top: 22px;
+}
+.app-shell .bookmark-group-panel {
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  margin-block: 0 17px;
+  padding: 0;
+  background: var(--panel-2);
+  box-shadow: none;
+}
+.app-shell .bookmark-group-panel > .group-panel-header {
+  min-height: 45px;
+  padding: 6px 10px;
+  gap: 3px;
+  background: transparent;
+  border-radius: 8px;
+}
+.app-shell .group-panel-toggle {
+  min-width: 0;
+  flex: 1;
+  gap: 9px;
+  font-size: 13px;
+  color: var(--text);
+  line-height: 1.5;
+  background: transparent;
+  padding: 0;
+}
+.group-panel-toggle > svg {
+  color: var(--blue);
+  flex-shrink: 0;
+}
+.group-panel-toggle small {
+  color: var(--faint);
+  font-size: 11px;
+  font-weight: 400;
+}
+.app-shell .group-panel-body {
+  padding: 0 9px 9px;
+}
+.app-shell .bookmark-group-panel .link-list {
+  padding: 0;
+  gap: 5px;
+}
+.app-shell .group-panel-note {
+  padding: 0 5px 7px;
+  margin: 0;
+  line-height: 1.6;
+  color: var(--muted);
+}
+.app-shell .group-panel-empty {
+  display: block;
+  width: 100%;
+  text-align: left;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--faint);
+  background: none;
+  padding: 10px 7px;
+}
+.simple-link-row {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  background: var(--row-bg);
+  color: var(--text);
+  transition: border-color 0.12s;
+}
+.simple-link-row:hover,
+.simple-link-row:focus-within {
+  border-color: var(--line);
+}
+.simple-link-line {
+  min-height: 43px;
+  padding: 3px 6px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+.simple-link-line > .sort-drag-handle {
+  flex-basis: 20px;
+  width: 20px;
+}
+.link-symbol {
+  flex: 0 0 15px;
+  color: var(--blue);
+}
+.simple-link-main {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex: 1;
+  min-width: 0;
+  align-self: stretch;
+  padding: 4px 2px;
+  background: none;
+  color: var(--text);
+  text-align: left;
+}
+.simple-link-main .link-inline-title {
+  font-size: 13px;
+  line-height: 1.5;
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 550;
+}
+.simple-link-domain {
+  color: var(--faint);
+  flex: 0 1 160px;
+  min-width: 50px;
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: right;
+}
+.simple-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  flex-shrink: 0;
+}
+.app-shell .icon-button,
+.simple-row-actions .icon-button {
+  width: 30px;
+  height: 30px;
+  border-radius: 5px;
+  color: var(--muted);
+  padding: 0;
+  display: inline-grid;
+  place-items: center;
+  flex-shrink: 0;
+  background: transparent;
+}
+.app-shell .icon-button:hover,
+.simple-row-actions .icon-button:hover {
+  background: var(--panel-3);
+  color: var(--text);
+}
+.app-shell .simple-row-actions svg {
+  transition: transform 0.15s;
+}
+.rotated {
+  transform: rotate(180deg);
+}
+.simple-link-detail {
+  border-top: 1px solid var(--line-soft);
+  margin: 0 12px 0 48px;
+  padding: 9px 4px 10px;
+  line-height: 1.7;
+  font-size: 12px;
+  color: var(--muted);
+}
+.simple-link-detail a {
+  color: var(--blue);
+  overflow-wrap: anywhere;
+}
+.simple-link-detail p {
+  margin: 4px 0;
+  white-space: pre-wrap;
+}
+.app-shell .link-select-row.selected .simple-link-row {
+  border-color: var(--blue);
+  background: var(--selection);
+}
+.app-shell .link-select-row:has(.link-select-checkbox) {
+  padding-left: 27px;
+}
+.app-shell .link-select-checkbox {
+  left: 5px;
+}
+.app-shell .simple-link-row.is-dragging,
+.app-shell .drag-source {
+  opacity: 0.45;
+  transform: none;
+}
+.app-shell .add-group-inline {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  width: 100%;
+  padding: 12px;
+  border: 1px dashed var(--line);
+  border-radius: 7px;
+  font-size: 12px;
+  color: var(--muted);
+  background: transparent;
+}
+.app-shell .simple-bulk-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px;
+  padding: 9px;
+  margin: 10px 0;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--selection);
+  font-size: 12px;
+}
+.simple-bulk-bar > .selection-toggle {
+  margin-right: auto;
+  color: var(--text);
+}
+.simple-bulk-bar > select {
+  flex: 1 1 100px;
+  min-width: 70px;
+  width: auto;
+  height: 30px;
+  padding: 2px 6px;
+  margin: 0;
+  font-size: 11px;
+}
+.simple-bulk-bar > label {
+  font-size: 11px;
+  gap: 5px;
+}
+.app-shell .simple-directory-options {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 0 7px 12px;
+  color: var(--faint);
+  font-size: 11px;
+}
+.simple-directory-options .sort-control {
+  margin-left: auto;
+  gap: 4px;
+}
+.simple-directory-options .sort-control select {
+  width: 88px;
+  height: 28px;
+  margin: 0;
+  padding: 0 4px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 11px;
+}
+.kube-directory-group {
+  margin: 0 0 13px;
+}
+.kube-directory-heading {
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  padding: 1px 3px;
+}
+.kube-directory-toggle {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  text-align: left;
+  background: none;
+  min-width: 0;
+  min-height: 30px;
+  flex: 1;
+  padding: 0 2px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.kube-directory-toggle > .group-icon {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 20px;
+  border-radius: 0;
+  background: none;
+  color: var(--blue);
+  flex-shrink: 0;
+}
+.kube-directory-toggle > span:not(.group-icon) {
+  min-width: 0;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.kube-directory-toggle > b {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--faint);
+}
+.kube-directory-items {
+  padding-left: 14px;
+}
+.app-shell .simple-workspace .config-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-top: 3px;
+  padding: 4px 5px;
+  min-height: 55px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  box-shadow: none;
+}
+.app-shell .simple-workspace .config-row.active,
+.app-shell .simple-workspace .config-row.checked {
+  background: var(--selection);
+  border-color: var(--line);
+  box-shadow: none;
+}
+.config-select-main {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  flex: 1;
+  gap: 9px;
+  background: none;
+  color: inherit;
+  padding: 4px;
+  text-align: left;
+}
+.config-select-main > svg {
+  color: var(--blue);
+  flex-shrink: 0;
+}
+.config-select-main > span {
+  flex: 1;
+  min-width: 0;
+}
+.config-select-main strong {
+  display: block;
+  font-size: 12px;
+  font-weight: 550;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.config-select-main small {
+  display: block;
+  margin-top: 4px;
+  font-size: 10px;
+  color: var(--faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.app-shell .config-detail-button {
+  width: 23px;
+  min-width: 23px;
+  height: 28px;
+  opacity: 0;
+}
+.config-row:hover .config-detail-button,
+.config-row:focus-within .config-detail-button {
+  opacity: 1;
+}
+.directory-group-empty {
+  display: block;
+  width: 100%;
+  padding: 8px;
+  background: none;
+  text-align: left;
+  font-size: 11px;
+  color: var(--faint);
+}
+.app-shell .simple-workspace .simple-config-content {
+  padding: 28px clamp(24px, 4vw, 68px) 40px;
+}
+.simple-config-content > * {
+  max-width: 900px;
+  margin-inline: auto;
+}
+.config-source-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  color: var(--faint);
+  font-size: 11px;
+  margin-top: 8px;
+  margin-bottom: 25px;
+}
+.config-source-line > span {
+  white-space: nowrap;
+  padding: 3px 6px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+}
+.config-source-line > code {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  line-height: 1.7;
+  flex: 1;
+}
+.simple-config-metadata {
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--line);
+}
+.app-shell .simple-config-content .form-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+.app-shell .simple-config-content label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 18px;
+  min-width: 0;
+  margin: 0;
+}
+.app-shell .simple-config-content input,
+.app-shell .simple-config-content select {
+  width: 100%;
+  height: 38px;
+  margin: 0;
+  padding: 0 10px;
+  font-size: 12px;
+  line-height: normal;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--text);
+  background: var(--row-bg);
+  box-shadow: none;
+}
+.simple-command-section {
+  margin-top: 28px;
+}
+.simple-command-section h2 {
+  font-size: 14px;
+  color: var(--text);
+  margin: 0;
+  font-weight: 600;
+}
+.app-shell .simple-config-content .command-label-row {
+  margin: 0 0 15px;
+  min-height: 24px;
+}
+.app-shell .simple-config-content .command-form {
+  display: flex;
+  flex-direction: column;
+  gap: 17px;
+  margin: 0;
+}
+.app-shell .simple-config-content .copy-options {
+  margin: 0;
+  padding: 0;
+  background: none;
+  border: 0;
+}
+.simple-advanced {
+  color: var(--muted);
+  font-size: 12px;
+}
+.simple-advanced summary {
+  cursor: pointer;
+  padding: 3px 0;
+}
+.simple-advanced > label {
+  padding-top: 9px;
+}
+.app-shell .simple-config-content .command-preview {
+  margin-top: 21px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--code-bg);
+  overflow: hidden;
+  color: var(--code-text);
+}
+.app-shell .simple-config-content .preview-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 13px;
+  min-height: 42px;
+  border-bottom: 1px solid #ffffff13;
+  color: #b1c7b8;
+  background: transparent;
+  font-size: 11px;
+}
+.app-shell .preview-header > span {
+  margin-right: auto;
+}
+.app-shell .simple-config-content .preview-header button {
+  margin: 0;
+  color: #d4e3d7;
+  background: transparent;
+  font-size: 11px;
+}
+.app-shell .simple-config-content .copy-command {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid #ffffff25;
+  border-radius: 5px;
+  padding: 5px 8px;
+}
+.app-shell .simple-config-content .command-preview pre {
+  padding: 17px;
+  margin: 0;
+  line-height: 1.9;
+  white-space: pre;
+  overflow-x: auto;
+  color: var(--code-text);
+  font:
+    12px/1.9 ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    Consolas,
+    monospace;
+}
+.app-shell .simple-config-content .command-preview code {
+  display: block;
+  color: inherit;
+  font: inherit;
+}
+.app-shell .simple-config-content .command-note {
+  display: block;
+  color: var(--faint);
+  margin: 10px 0 0;
+  padding: 0;
+  font-size: 11px;
+  line-height: 1.7;
+  background: transparent;
+}
+.app-shell .toolbar-button,
+.app-shell .ghost-button,
+.app-shell .primary-button {
+  min-height: 32px;
+  height: auto;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--text);
+  font-size: 12px;
+  box-shadow: none;
+  padding: 6px 10px;
+  gap: 7px;
+}
+.app-shell .primary-button {
+  background: #537a65;
+  border-color: #537a65;
+  color: #f7faf5;
+}
+.app-shell .primary-button:hover {
+  background: #466d58;
+}
+.app-shell .ghost-button:hover,
+.app-shell .toolbar-button:hover {
+  background: var(--panel-3);
+  border-color: var(--line);
+}
+.app-shell .inline-control {
+  background: transparent;
+  color: var(--muted);
+  font-size: 11px;
+}
+.app-shell .danger-action,
+.app-shell .danger-control {
+  color: var(--danger);
+}
+.app-shell button:disabled,
+.context-actions button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.context-actions {
+  min-width: 210px;
+  background: var(--panel);
+  color: var(--text);
+  border-color: var(--line);
+  border-radius: 7px;
+  box-shadow: 0 8px 25px #1b2a2024;
+  padding: 5px;
+}
+.context-actions button {
+  color: var(--text);
+  padding: 8px 10px;
+  font-size: 12px;
+  border-radius: 4px;
+  line-height: 1.5;
+}
+.context-actions button:hover,
+.context-actions button:focus-visible {
+  background: var(--selection);
+}
+.app-shell .modal {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: 0 20px 70px #14201933;
+}
+.app-shell .modal-backdrop {
+  background: #23302755;
+  backdrop-filter: blur(3px);
+}
+.app-shell .form-stack label {
+  color: var(--muted);
+  font-size: 12px;
+}
+.app-shell .form-stack input,
+.app-shell .form-stack select,
+.app-shell .form-stack textarea {
+  background: var(--row-bg);
+  color: var(--text);
+  border-color: var(--line);
+  box-shadow: none;
+  font-size: 13px;
+}
+.app-shell .modal-header h2 {
+  color: var(--text);
+  font-size: 17px;
+}
+.app-shell .toast {
+  border-color: var(--line);
+  background: var(--selection);
+  color: var(--text);
+  box-shadow: 0 5px 18px #23302720;
+  font-size: 12px;
+}
+.app-shell .drag-preview {
+  color: var(--text);
+  background: var(--selection);
+  border-color: var(--blue);
+}
+.app-shell .drop-inside,
+.app-shell .bookmark-folder-row.drop-inside {
+  background: var(--selection) !important;
+  outline: 2px solid var(--blue);
+  outline-offset: -2px;
+}
+.app-shell .drop-before::before,
+.app-shell .drop-after::after,
+.app-shell .drop-gap.enabled::after {
+  background: var(--blue);
+}
+.app-shell .side-helper,
+.simple-drag-status {
+  background: var(--selection);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 9px;
+  color: var(--blue-soft);
+  font-size: 11px;
+  line-height: 1.7;
+  flex-shrink: 0;
+  margin-top: 8px;
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+.app-shell .command-library-page {
+  padding: 0;
+  height: 100%;
+  overflow: hidden;
+  --code-bg: #29342e;
+  --code-text: #d9e5db;
+  --code-comment: #a2b3a4;
+}
+.app-shell .command-library-page > .page-heading {
+  display: none;
+}
+.app-shell .command-workspace {
+  border: 0;
+  border-radius: 0;
+  min-height: 0;
+  height: 100%;
+  box-shadow: none;
+}
+.app-shell .command-workspace .command-sidebar {
+  background: var(--panel-2);
+  padding-top: 22px;
+  position: relative;
+  top: auto;
+  height: 100%;
+  max-height: none;
+}
+.app-shell .command-main {
+  overflow: auto;
+  padding: 25px 28px;
+}
+.app-shell .command-folder.active {
+  background: var(--selection);
+  color: var(--text);
+}
+.app-shell .command-folder-label {
+  margin-top: 15px;
+}
+.app-shell .command-sidebar-note {
+  padding-top: 16px;
+}
+.app-shell .command-card {
+  background: var(--row-bg);
+  border-color: var(--line);
+  box-shadow: none;
+  border-radius: 8px;
+}
+.app-shell .command-card-title h3 {
+  font-size: 14px;
+}
+.app-shell .settings-card {
+  background: var(--panel);
+  border-color: var(--line);
+  box-shadow: none;
+}
+.app-shell .settings-page .eyebrow {
+  display: none;
+}
+.app-shell
+  .simple-workspace.directory-collapsed
+  .collection-sidebar
+  > :not(.directory-toggle),
+.app-shell
+  .simple-workspace
+  .directory-collapsed
+  .collection-sidebar
+  > :not(.directory-toggle),
+.app-shell
+  .simple-workspace
+  .directory-collapsed
+  .kube-groups
+  > :not(.directory-toggle) {
+  display: none;
+}
+@container (max-width: 600px) {
+  .simple-link-main {
+    gap: 10px;
+  }
+  .simple-link-domain {
+    flex-basis: 110px;
+  }
+  .simple-stage-title {
+    flex-basis: 100%;
+  }
+}
+@media (max-width: 1100px) {
+  .topbar .brand-mark {
+    min-width: auto;
+  }
+  .topbar .brand-mark strong {
+    display: none;
+  }
+  .app-shell .topbar {
+    gap: 12px;
+    padding-inline: 15px;
+  }
+  .app-shell .storage-shortcut > span {
+    display: none;
+  }
+  .app-shell .simple-workspace .board-stage {
+    padding-inline: 20px;
+  }
+  .app-shell .simple-workspace .simple-config-content {
+    padding-inline: 24px;
+  }
+}
+@media (max-width: 760px) {
+  .app-shell .topbar {
+    height: 96px;
+    min-height: 96px;
+    flex-wrap: wrap;
+    padding-block: 8px;
+    gap: 6px 12px;
+  }
+  .app-shell .topbar .primary-nav {
+    flex: 1;
+  }
+  .app-shell .topbar .topbar-actions {
+    flex-basis: 100%;
+  }
+  .app-shell .topbar .global-search {
+    width: auto;
+    flex: 1;
+  }
+  .app-shell .content-wrap.simple-workspace {
+    overflow: auto;
+    height: auto;
+    min-height: 100%;
+  }
+  .app-shell .simple-workspace .workspace-grid,
+  .app-shell .simple-workspace .kube-grid {
+    display: block;
+    height: auto;
+    overflow: visible;
+  }
+  .app-shell .simple-workspace .collection-sidebar,
+  .app-shell .simple-workspace .kube-groups {
+    max-height: 280px;
+    height: auto;
+    min-height: 170px;
+    padding-top: 12px;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .simple-workspace .board-tree,
+  .kube-directory-tree {
+    min-height: 70px;
+    max-height: 180px;
+  }
+  .app-shell .simple-workspace .board-stage,
+  .app-shell .simple-workspace .command-panel {
+    padding: 20px 14px;
+  }
+  .app-shell .simple-config-content .form-row {
+    gap: 10px;
+  }
+  .simple-link-domain {
+    flex-basis: 85px;
+    font-size: 10px;
+  }
+  .simple-link-line {
+    gap: 4px;
+  }
+  .simple-row-actions {
+    gap: 0;
+  }
+  .simple-row-actions .icon-button {
+    width: 26px;
+  }
+  .directory-footer {
+    padding-top: 6px;
+    margin-top: 6px;
+  }
+  .app-shell .command-library-page {
+    height: auto;
+    overflow: auto;
+  }
+  .app-shell .command-workspace {
+    display: block;
+  }
+  .app-shell .command-sidebar {
+    max-height: 250px;
+  }
+}
+
+/* The quiet theme also owns fields and portaled surfaces, which previously
+   inherited hard-coded bright colors from the old light theme. */
+.app-shell[data-theme] .topbar .primary-nav {
+  background: var(--panel-2);
+  border-color: var(--line);
+}
+.app-shell[data-theme] .topbar .nav-item.active {
+  background: var(--row-bg);
+  color: var(--text);
+  box-shadow: 0 1px 3px #27332d14;
+}
+.app-shell[data-theme] .topbar .global-search {
+  background: var(--panel-2);
+  border-color: var(--line);
+}
+.app-shell[data-theme] .form-stack input,
+.app-shell[data-theme] .form-stack select,
+.app-shell[data-theme] .form-stack textarea {
+  background: var(--row-bg);
+  color: var(--text);
+  border-color: var(--line);
+}
+.app-shell .simple-workspace .drop-gap {
+  min-height: 0;
+  height: 0;
+  margin: 0;
+  padding: 0;
+  position: relative;
+}
+.app-shell .simple-workspace .drop-gap.enabled {
+  height: 4px;
+  margin-block: 0;
+}
+.app-shell .simple-workspace .drop-gap.enabled::after {
+  height: 3px;
+}
+.app-shell .simple-config-content .command-label-row > h2 {
+  margin-right: auto;
+}
+.app-shell .command-list-heading > .simple-stage-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.app-shell .command-sidebar-heading > button {
+  margin-left: auto;
+}
+.drag-preview {
+  color: var(--text);
+  background: var(--selection);
+  border-color: var(--blue);
+}
+.app-shell .simple-workspace .drop-gap:not(.enabled) {
+  display: none;
+}
+.app-shell .simple-workspace .kube-grid {
+  grid-template-rows: minmax(0, 1fr);
+}
+.app-shell .simple-workspace .kube-grid > .kube-groups,
+.app-shell .simple-workspace .kube-grid > .command-panel {
+  grid-row: 1;
+  align-self: stretch;
+}
+.app-shell .simple-workspace .kube-grid > .kube-groups {
+  border-bottom: 0;
+}
+.app-shell .config-source-line {
+  margin-bottom: 18px;
+}
+.app-shell .simple-config-metadata {
+  padding-bottom: 20px;
+}
+.app-shell .simple-command-section {
+  margin-top: 22px;
+}
+.app-shell .simple-config-content .command-form {
+  gap: 13px;
+}
+.app-shell .simple-config-content input,
+.app-shell .simple-config-content select {
+  height: 36px;
+}
+.app-shell .simple-config-content .command-preview {
+  margin-top: 16px;
+}
+.app-shell[data-density='comfortable'] .simple-link-line {
+  min-height: 49px;
+}
+.app-shell .source-editor-heading {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 5px;
+}
+.source-editor-heading h3 {
+  margin: 0 auto 0 0;
+  font-size: 13px;
+  color: var(--text);
+}
+.app-shell .config-detail-modal .yaml-editor {
+  min-height: 280px;
+  height: 34vh;
+  font:
+    12px/1.8 ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    monospace;
+}
+.app-shell .config-detail-modal .yaml-editor:read-only {
+  color: var(--muted);
+  background: var(--panel-2);
+}
+.source-metadata {
+  font-size: 12px;
+  color: var(--muted);
+}
+.source-metadata summary {
+  cursor: pointer;
+  padding-block: 4px;
+}
+.source-metadata > .form-row {
+  margin-top: 13px;
+}
+.source-metadata dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 8px 18px;
+  line-height: 1.7;
+  font-size: 11px;
+}
+.source-metadata dt {
+  color: var(--faint);
+}
+.source-metadata dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.app-shell[data-theme] .kube-directory-toggle .group-icon {
+  background: transparent;
+  border: 0;
+}
+.app-shell .command-language-filter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.app-shell .command-list-tools {
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: -6px;
+}
+.app-shell .command-list-tools select {
+  margin: 0;
+  padding: 4px 7px;
+  height: 31px;
+  min-width: 100px;
+  border-color: var(--line);
+  background: var(--panel);
+  color: var(--text);
+}
+.app-shell .command-browser-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin: 10px 0 14px;
+}
+.app-shell .command-browser-tools .command-selection-bar {
+  flex: 1 1 260px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-height: 32px;
+}
+.app-shell .command-browser-tools .command-list-tools {
+  flex: 0 1 auto;
+  margin: 0;
+}
+.app-shell .command-selection-bar:not(.has-selection) > span {
+  display: none;
+}
+.app-shell .import-destination.form-row {
+  grid-template-columns: minmax(0, 1fr);
+}
+.app-shell .import-source-tabs > button {
+  min-height: 68px;
+  padding: 13px 16px;
+  border-color: var(--line);
+  background: var(--panel-2);
+}
+.app-shell .import-source-tabs > button[aria-selected='true'] {
+  border-color: var(--blue);
+  background: var(--selection);
+  color: var(--text);
+}
+.app-shell .import-source-tabs > button strong {
+  font-size: 13px;
+}
+.app-shell .import-source-tabs > button small {
+  font-size: 11px;
+}

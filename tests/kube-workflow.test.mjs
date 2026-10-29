@@ -55,9 +55,9 @@ test('single-file import is one undoable operation without a preflight write byp
     const { initialKubeConfigs } = await ui.server.ssrLoadModule('/src/data.ts')
     file = { path: '/synthetic-only/example.txt', content: initialKubeConfigs[0].content }
     await ui.click(ui.button('Kubeconfig'))
-    await ui.click(ui.button('添加配置'))
+    await ui.click(ui.button('导入 kubeconfig'))
     await ui.click(document.querySelector('.import-picker'))
-    await ui.click(ui.button('导入配置'))
+    await ui.click(document.querySelector('[role="dialog"] .import-footer .primary-button'))
     assert.equal(JSON.parse(localStorage.getItem('orbit-kube-configs')).length, initialKubeConfigs.length + 1)
     await ui.click(ui.button('撤销库操作'))
     const restored = JSON.parse(localStorage.getItem('orbit-kube-configs') || JSON.stringify(initialKubeConfigs))

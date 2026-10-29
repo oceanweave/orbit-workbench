@@ -304,7 +304,7 @@ export function ExchangePanel({
         </div>
         <p className="form-hint">
           <FileUp size={13} />
-          HTML 用于浏览器互通；JSON 保留标签、颜色、备注和目录结构，可从导入入口恢复。
+          HTML 用于浏览器互通；JSON 保留颜色、备注和目录结构，可从导入入口恢复。
         </p>
       </div>
     </Modal>
