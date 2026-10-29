@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { dropPosition, type DropPosition } from '../../shared/ordering.mjs'
 import '../components/workspace-drag.css'
 
-export type WorkspaceDragItem = { kind: 'board' | 'group' | 'link' | 'config' | 'kube-group' | 'command' | 'command-group'; id: string; boardId?: string }
+export type WorkspaceDragItem = { kind: 'category' | 'board' | 'group' | 'link' | 'config' | 'kube-group' | 'command' | 'command-group'; id: string; boardId?: string }
 export type WorkspaceDropTarget = WorkspaceDragItem & { position: DropPosition }
 
 export function rowDropTarget(event: React.DragEvent<HTMLElement>, item: WorkspaceDragItem, nested = false): WorkspaceDropTarget {

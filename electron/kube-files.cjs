@@ -1,6 +1,7 @@
 const fs = require('node:fs/promises')
 const path = require('node:path')
 const os = require('node:os')
+const { randomUUID } = require('node:crypto')
 
 const MAX_FILES = 5000
 const MAX_SCAN_BYTES = 32 * 1024 * 1024
@@ -98,4 +99,28 @@ async function saveManagedKubeFile({ directoryPath, fileName, content }) {
   return { path: target, content }
 }
 
-module.exports = { readKubeFile, scanKubeDirectory, saveManagedKubeFile }
+async function writeKubeFile({ path: filePath, content, expectedContent }) {
+  const { inspectKubeconfig } = await helpers()
+  inspectKubeconfig(content)
+  const target = await fs.realpath(path.resolve(expand(filePath)))
+  const original = await fs.readFile(target, 'utf8')
+  const info = await fs.stat(target)
+  if (!info.isFile()) throw new Error('源路径不是普通文件')
+  if (process.platform !== 'win32' && (info.mode & 0o222) === 0) throw new Error('源文件不可写，请修改权限或另存配置')
+  if (expectedContent !== undefined && original !== expectedContent) throw new Error('源文件已在其他程序中修改，请保留草稿，重新读取后再保存')
+  if (original === content) return { path: target, content }
+  const temporary = path.join(path.dirname(target), `.orbit-${randomUUID()}.tmp`)
+  const backupPath = `${target}.orbit-backup-${Date.now()}-${randomUUID().slice(0, 8)}`
+  try {
+    const handle = await fs.open(temporary, 'wx', info.mode & 0o777)
+    try { await handle.writeFile(content, 'utf8'); await handle.sync() } finally { await handle.close() }
+    await fs.writeFile(backupPath, original, { mode: 0o600, flag: 'wx' })
+    if (await fs.readFile(target, 'utf8') !== original) throw new Error('源文件在保存期间发生变化，未覆盖。请保留草稿并重新读取')
+    // Same-directory rename preserves relative certificate paths and avoids a
+    // partially written source if writing or validation fails.
+    await fs.rename(temporary, target)
+    return { path: target, content, backupPath }
+  } finally { await fs.rm(temporary, { force: true }) }
+}
+
+module.exports = { readKubeFile, scanKubeDirectory, saveManagedKubeFile, writeKubeFile }

@@ -123,3 +123,25 @@ test('clipboard import refuses Git repository directories, including symlinked p
     await assert.rejects(kubeFiles.saveManagedKubeFile({ ...input, directoryPath: path.join(linked, 'nested') }), /代码仓库以外/)
   }
 })
+
+test('source write is validated, detects stale drafts, backs up bytes and replaces atomically', async (t) => {
+  const root = await sandbox(t)
+  const target = path.join(root, 'config.txt')
+  const original = yaml()
+  const changed = original.replace('https://second.invalid', 'https://edited.invalid')
+  await fs.writeFile(target, original, { mode: 0o600 })
+  await assert.rejects(kubeFiles.writeKubeFile({ path: target, content: 'broken: [', expectedContent: original }), /格式无效/)
+  assert.equal(await fs.readFile(target, 'utf8'), original)
+  await assert.rejects(kubeFiles.writeKubeFile({ path: target, content: changed, expectedContent: 'stale draft' }), /其他程序/)
+  assert.equal(await fs.readFile(target, 'utf8'), original)
+  const result = await kubeFiles.writeKubeFile({ path: target, content: changed, expectedContent: original })
+  assert.equal(await fs.readFile(result.backupPath, 'utf8'), original)
+  assert.equal(await fs.readFile(target, 'utf8'), changed)
+  assert.ok(!(await fs.readdir(root)).some((name) => name.endsWith('.tmp')))
+  await assert.rejects(kubeFiles.writeKubeFile({ path: path.join(root, 'missing'), content: original }), { code: 'ENOENT' })
+  if (process.platform !== 'win32') {
+    await fs.chmod(target, 0o400)
+    await assert.rejects(kubeFiles.writeKubeFile({ path: target, content: original, expectedContent: changed }), /不可写/)
+    assert.equal(await fs.readFile(target, 'utf8'), changed)
+  }
+})

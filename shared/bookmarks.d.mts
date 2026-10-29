@@ -8,7 +8,7 @@ export function reparentBookmarkGroup(board: BookmarkBoard, groupId: string, par
 export function deleteBookmarkGroup(board: BookmarkBoard, groupId: string): BookmarkBoard
 export function moveBookmarkLinks(boards: BookmarkBoard[], sourceBoardId: string, linkIds: string[], targetBoardId: string, targetGroupId?: string): { boards: BookmarkBoard[]; groupId: string; count: number }
 export function placeBookmarkGroup(boards: BookmarkBoard[], sourceBoardId: string, groupId: string, targetBoardId: string, targetGroupId?: string, position?: DropPosition): BookmarkBoard[]
-export function placeBookmarkLink(boards: BookmarkBoard[], sourceBoardId: string, linkId: string, targetBoardId: string, targetLinkId: string, position: InsertPosition): BookmarkBoard[]
+export function placeBookmarkLink(boards: BookmarkBoard[], sourceBoardId: string, linkId: string | string[], targetBoardId: string, targetLinkId: string, position: InsertPosition): BookmarkBoard[]
 export function createBrowserBookmarksHtml(boards: BookmarkBoard[]): string
 export function parseBookmarksHtml(html: string, createDocument?: (html: string) => Document): BookmarkBoard[]
 export function bookmarkSearchBoard(results: { board: BookmarkBoard; link: LinkItem }[], name: string): BookmarkBoard

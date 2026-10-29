@@ -14,12 +14,16 @@ export type BookmarkGroup = {
   color: string
   /** Omitted for a top-level folder, preserving existing flat workspaces. */
   parentId?: string
+  description?: string
 }
+
+export type BoardCategory = { id: string; name: string; color: string; collapsed?: boolean }
 
 export type BookmarkBoard = {
   id: string
   name: string
   description: string
+  categoryId?: string
   tags: string[]
   groups: BookmarkGroup[]
   links: LinkItem[]

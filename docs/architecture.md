@@ -3,7 +3,7 @@
 ## 当前技术栈
 
 - **React + TypeScript + Vite**：负责页面、交互和构建。
-- **Electron**：负责 macOS 桌面窗口、外部链接打开和应用打包。
+- **Electron**：负责 macOS / Windows 桌面窗口、外部链接打开和应用打包。
 - **localStorage**：当前用于保存看板、Kubeconfig、命令模板和主题偏好。
 - **lucide-react**：提供统一的界面图标。
 - **Prism**：对独立命令库的代码进行本地语法分词；提供八种语言模式，不请求外部服务。
@@ -32,16 +32,31 @@
 └── README.md              # 使用和开发入口
 ```
 
+## 工作流模块（0.2.0）
+
+- `src/lib/workspaceStore.ts`：先提交存储再发布状态；按键通知订阅者，同一手势内多次更新合为一次库 Undo。撤销仅恢复记录，不能撤销源文件写回。读取失败不在挂载阶段覆盖存储。
+- `shared/kube-command.mjs`：独立纯生成器，三种复制格式、Bash/Zsh 与 PowerShell 转义；空字符串才是默认参数哨兵，真实 `default` 按显式参数输出。模板与附加参数是用户书写的 Shell 文本。
+- `shared/workspace.mjs`：版本校验、引用/循环校验、选择集合投影、复制 ID 重映射、子树独立和备份合并。
+- `ExchangePanel`：无副作用预览；勾选叶子时保留必要祖先；HTML 互通与 JSON 恢复用途分开。JSON v1 向后兼容，v2 加入范围、分类和收展状态；合并分配新 ID，配置按路径去重；替换仅更新文件包含的范围；先将该范围保存为 `orbit-recovery-backup` 并发起 JSON 下载，备份写入失败则终止恢复。本机存储入口可再次预览并恢复该副本。
+- `BoardOrganizer` / `GroupOrganizer` / `BookmarkPanels`：看板分类、批量管理及内容分组面板；`BookmarkGroupTree` 继续负责目录层级。分类是看板外层，不复用内容分组的 parentId。
+- `DirectorySizer`：各工具独立保存目录宽度/收起状态；拖宽期间只调整 CSS，放开才保存，避免每个 pointermove 写库。
+- `InlineCommandEditor`：CodeMirror 6 处理光标、选区、历史及语言颜色。原始文本与归一化文档位置映射，局部修改不重写未涉及的 CRLF/CR/LF、Tab 和空白；复制使用原始字符串。450ms 防抖、IME 结束后保存；失败草稿保留在当前会话，导出前刷新待保存内容，退出前提示。
+- `ColorPicker` / `ContextMenu` / `DropGap` / `StoragePanel`：统一预设与自选颜色、键盘可用的右键菜单、真实空白落点、真实存储位置入口。
+
+顶部工具页面首次加载后保持挂载，切换使用 hidden，保存目录/选择/滚动与草稿；命令模块首次进入时才延迟加载。隐藏页面的 Modal 不响应 Escape。
+
 ## 数据流
 
 表单布局集中在 `src/components/form-layout.css`，由入口在基础样式后加载。弹窗字段使用 18px 标签行高、8px 标签间距、42px 控件高度；目录输入与按钮共用同一个控件行，控件自身不再携带顶部外边距。命令生成器使用同一原则和 40px 控件高度。导入方式导航及操作栏保留在滚动区域边缘，剪贴板编辑器用 `focus({ preventScroll: true })` 聚焦，避免切换来源时意外滚走导航。
 
-`App` 负责加载持久化状态，并根据当前导航渲染书签或 Kubeconfig 页面。页面组件通过受控 props 修改状态；状态变化后由 `usePersistentState` 写回 localStorage。
+`App` 负责加载持久化状态，并根据当前导航渲染书签或 Kubeconfig 页面。页面组件通过受控 props 修改状态；`usePersistentState` 同步保存成功才发布状态，失败不虚报成功。
 
 主要键名如下：
 
 | 键名 | 内容 |
 | --- | --- |
+| `orbit-board-categories` | 看板外层分类，旧看板无 categoryId 时位于未分类 |
+| `orbit-bookmark-collapse` / `orbit-tree-collapse` / `orbit-expanded-boards` | 内容面板与目录收展偏好 |
 | `orbit-boards` | 书签看板、分组和链接 |
 | `orbit-kube-configs` | Kubeconfig 元数据、环境变量名称和当前编辑内容 |
 | `orbit-kube-groups` | Kubeconfig 环境分组 |
@@ -75,18 +90,21 @@ Kubeconfig 记录还包含用户可编辑的 `envName`（环境变量名称）�
 
 剪贴板默认目录为 `app.getPath('userData')/kubeconfigs`，支持用户指定其他本地目录；保存前检查真实父目录的 `.git`（含 worktree 的 `.git` 文件与符号链接路径），拒绝在仓库内创建配置。使用 `wx` 独占创建，macOS/Linux 新文件权限为 `0600`。真实配置和工作区数据只在本机，构建包含代码、共享解析模块和生产依赖，测试样例只在系统临时目录动态生成。
 
-## 命令生成规则
+## 命令生成与源文件写回
 
-命令生成器只拼接文本，不执行 shell 命令。生成结果由以下部分组成：
+`shared/kube-command.mjs` 的输入明确包含 format、shell、context、namespace；输出包含完整预览、变量定义及原始路径。空 Context/Namespace 不加参数，显式 default 仍加参数。Bash/Zsh 路径中的 `~/` 转换成双引号内的 `$HOME`，其余值按单引号规则转义；PowerShell 使用自己的字面量规则，单次格式在 finally 中恢复原 KUBECONFIG。命名变量格式在 PowerShell 中用 `kubectl --kubeconfig $NAME`，不改变后续终端环境。应用永不执行这些命令。
 
-```text
-<ENV_NAME>=<kubeconfig.path>
-KUBECONFIG=$<ENV_NAME> kubectl <template.command> [-n <namespace>] [--context <context>] [extraArgs]
-```
+`ConfigDetailModal` 的 onSave 返回 Promise<boolean>，等待写回和元数据保存后关闭。详情默认只读正文，主动切换编辑后才可修改 YAML / 文件 current-context。命令区 Context 选择仅影响生成文本，不重写文件。
 
-每个配置有独立的环境变量名称，默认按配置名称生成全大写值，例如 `PRODUCTION`、`KIND`；命令生成时会把输入转换为合法的 shell 变量，路径中包含空格或特殊字符时会自动使用安全的单引号包裹。
+主进程 `writeKubeFile` 先验证内容，比较读取时的原文，检测失效/不可写/外部变更；创建权限受限的备份，在原目录完成临时文件写入与 rename，避免半写入及相对证书引用目录变化。外部程序恰在最后一次比较与 rename 之间并发修改仍存在系统级竞态，当前没有跨进程文件锁；备份保留在源文件旁供恢复。移除配置记录不删除源文件。
 
-这样既能复制完整命令，也能避免应用直接访问集群凭据。将来增加原生文件解析时，应继续保持“展示和复制默认安全，执行需要明确的独立入口”的边界。
+## 验证边界
+
+`npm test` 使用隔离 localStorage、JSDOM 和系统临时目录；不读取真实 kubeconfig、个人书签或执行用户命令。真实 Bash 回归只调用模拟 kubectl 函数；Windows runner 有 Git Bash 时执行同一测试。PowerShell 生成文本有断言，不等同 PowerShell 原生执行验收。
+
+当前覆盖默认参数、特殊字符转义、失败草稿、无后缀/.txt/递归导入、原文件变化检测与备份、选择集合/祖先/复制 ID、JSON 版本和循环引用、Undo、模块切换草稿、CodeMirror 换行与 IME 自动保存。浏览器人工验证了导航、正文输入/复制/编辑 Undo。系统指针拖放、macOS 原生窗口和 Windows 10/11 安装运行仍需各自验收；不能用合成 dataTransfer 测试替代。
+
+多命名存储空间为后续增强，本次没有实现跨库写入、离线库或实时同步。
 
 ## 桌面打包
 

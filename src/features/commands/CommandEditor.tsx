@@ -14,12 +14,13 @@ export function CommandEditor({ command, groups, onSave, onClose }: {
   const [preview, setPreview] = useState(false)
   const [error, setError] = useState('')
   const composing = useRef(false)
+  const requestClose = () => { if (JSON.stringify(draft) === JSON.stringify(command) || window.confirm('有未保存的命令内容，确定放弃草稿？')) onClose() }
   const save = () => {
     if (!draft.name.trim() || !draft.content.trim()) { setError('请填写命令名称和内容'); return }
     if (draft.content.length > 100_000) { setError('单条命令记录最多支持 100,000 个字符，请拆分后保存'); return }
     if (onSave({ ...draft, name: draft.name.trim(), updatedAt: new Date().toISOString() })) onClose()
   }
-  return <Modal title={command.name ? '编辑命令记录' : '新建命令记录'} className="modal-wide command-editor-modal" onClose={onClose}>
+  return <Modal title={command.name ? '编辑命令记录' : '新建命令记录'} className="modal-wide command-editor-modal" onClose={requestClose}>
     <form className="form-stack" onSubmit={(event) => { event.preventDefault(); if (!composing.current) save() }} onCompositionStart={() => { composing.current = true }} onCompositionEnd={() => { composing.current = false }} onKeyDown={(event) => {
       if (event.key === 'Enter' && (composing.current || event.nativeEvent.isComposing || event.keyCode === 229)) { event.preventDefault(); return }
       if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) { event.preventDefault(); save() }
@@ -30,7 +31,7 @@ export function CommandEditor({ command, groups, onSave, onClose }: {
       {preview ? <div className="command-editor-preview"><CommandCode content={draft.content} language={draft.language} name={draft.name || '命令预览'} /></div> : <textarea className="command-content-editor" aria-label="命令内容" spellCheck={false} maxLength={100_000} value={draft.content} placeholder={'# 在这里记录说明和命令\nkubectl get pods -o wide'} onChange={(event) => { setDraft({ ...draft, content: event.target.value }); setError('') }} />}
       <div className="command-editor-hint"><span>保留缩进、空行和注释 · 仅记录与复制</span><span>⌘ / Ctrl + Enter 保存</span></div>
       {error && <p className="field-error" role="alert">{error}</p>}
-      <div className="modal-actions"><button type="button" className="ghost-button" onClick={onClose}>取消</button><button type="submit" className="primary-button"><Save size={15} />保存命令</button></div>
+      <div className="modal-actions"><button type="button" className="ghost-button" onClick={requestClose}>取消</button><button type="submit" className="primary-button"><Save size={15} />保存命令</button></div>
     </form>
   </Modal>
 }

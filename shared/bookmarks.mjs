@@ -1,4 +1,4 @@
-import { reorderItems } from './ordering.mjs'
+import { reorderItems, placeGroupedItems } from './ordering.mjs'
 
 const id = (prefix) => `${prefix}-${globalThis.crypto.randomUUID()}`
 const timestamp = () => new Date().toISOString()
@@ -123,10 +123,11 @@ export function placeBookmarkGroup(boards, sourceBoardId, groupId, targetBoardId
 export function placeBookmarkLink(boards, sourceBoardId, linkId, targetBoardId, targetLinkId, position) {
   const target = boards.find((board) => board.id === targetBoardId)?.links.find((link) => link.id === targetLinkId)
   if (!target) throw new Error('目标链接不存在')
-  if (sourceBoardId === targetBoardId && linkId === targetLinkId) return boards
-  const moved = moveBookmarkLinks(boards, sourceBoardId, [linkId], targetBoardId, target.groupId)
+  const ids = Array.isArray(linkId) ? linkId : [linkId]
+  if (sourceBoardId === targetBoardId && ids.includes(targetLinkId)) return boards
+  const moved = moveBookmarkLinks(boards, sourceBoardId, ids, targetBoardId, target.groupId)
   if (!moved.count) throw new Error('源链接不存在')
-  return moved.boards.map((board) => board.id === targetBoardId ? { ...board, links: reorderItems(board.links, linkId, targetLinkId, position) } : board)
+  return moved.boards.map((board) => board.id === targetBoardId ? { ...board, links: placeGroupedItems(board.links, ids, targetLinkId, position) } : board)
 }
 
 export function createBrowserBookmarksHtml(boards) {
@@ -134,7 +135,7 @@ export function createBrowserBookmarksHtml(boards) {
     const number = Math.floor(new Date(value).getTime() / 1000)
     return Number.isFinite(number) && number > 0 ? ` ADD_DATE="${number}"` : ''
   }
-  const linkMarkup = (link) => `<DT><A HREF="${escape(link.url)}"${dateAttribute(link.addedAt)}>${escape(link.title || link.url)}</A>`
+  const linkMarkup = (link) => `<DT><A HREF="${escape(link.url)}"${dateAttribute(link.addedAt)}>${escape(link.title || link.url)}</A>${link.description ? `\n<DD>${escape(link.description)}` : ''}`
   const folders = boards.map((board) => {
     const rows = bookmarkGroupRows(board.groups)
     const groups = new Map(), links = new Map()
@@ -155,27 +156,30 @@ export function createBrowserBookmarksHtml(boards) {
 }
 
 export function parseBookmarksHtml(html, createDocument = (source) => new DOMParser().parseFromString(source, 'text/html')) {
+  if (new TextEncoder().encode(html).length > 20 * 1024 * 1024) throw new Error('书签文件超过 20 MB，请拆分导入；当前库未改变')
   const document = createDocument(html)
   const root = document.querySelector('dl')
   if (!root) return []
+  if (root.querySelectorAll('dt').length > 100000) throw new Error('书签节点超过 100000 个，请拆分导入；当前库未改变')
   // Browsers produce both DL-inside-DT and sibling-DL forms of Netscape HTML.
   const entries = (dl) => Array.from(dl.children).filter((child) => child.tagName === 'DT').map((child) => {
     let nested = child.querySelector(':scope > dl')
     let sibling = child.nextElementSibling
     while (!nested && sibling?.tagName === 'P' && !sibling.children.length) sibling = sibling.nextElementSibling
     if (!nested && sibling?.tagName === 'DL') nested = sibling
-    return { heading: child.querySelector(':scope > h3'), anchor: child.querySelector(':scope > a'), nested }
+    return { heading: child.querySelector(':scope > h3'), anchor: child.querySelector(':scope > a'), nested, description: child.querySelector(':scope > dd')?.textContent || (child.nextElementSibling?.tagName === 'DD' ? child.nextElementSibling.textContent : '') }
   })
   const boards = []
   const makeBoard = (name, dl, directEntries) => {
     const board = { id: id('board'), name, description: '从浏览器书签导入', tags: ['导入'], groups: [], links: [], updatedAt: timestamp() }
     let looseGroup
-    const visit = (items, parentId) => {
+    const visit = (items, parentId, depth = 0) => {
+      if (depth > 64) throw new Error(`文件夹嵌套超过 64 层，位置：${board.groups.find((item) => item.id === parentId)?.name || board.name}；本次未导入`)
       for (const item of items) {
         if (item.heading) {
           const group = { id: id('group'), name: item.heading.textContent.trim() || '未命名分组', color: palette[board.groups.length % palette.length], ...(parentId ? { parentId } : {}) }
           board.groups.push(group)
-          if (item.nested) visit(entries(item.nested), group.id)
+          if (item.nested) visit(entries(item.nested), group.id, depth + 1)
         } else if (item.anchor) {
           const url = item.anchor.getAttribute('href') || ''
           if (!url) continue
@@ -186,7 +190,7 @@ export function parseBookmarksHtml(html, createDocument = (source) => new DOMPar
           }
           const seconds = Number(item.anchor.getAttribute('add_date'))
           const addedAt = Number.isFinite(seconds) && seconds > 0 && seconds < 8640000000000 ? new Date(seconds * 1000).toISOString() : timestamp()
-          board.links.push({ id: id('link'), title: item.anchor.textContent.trim() || url, url, groupId, tags: [], description: '从浏览器书签导入', addedAt })
+          board.links.push({ id: id('link'), title: item.anchor.textContent.trim() || url, url, groupId, tags: [], description: item.description?.trim() || '从浏览器书签导入', addedAt })
         }
       }
     }

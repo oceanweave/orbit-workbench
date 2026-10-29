@@ -4,3 +4,5 @@ export function reorderItems<T extends { id: string }>(items: T[], sourceId: str
 export function placeGroupedItem<T extends { id: string; groupId: string }>(items: T[], sourceId: string, targetId: string, position: InsertPosition): T[]
 export function orderVisibleItems<T extends { id: string }>(items: T[], visibleIds: string[]): T[]
 export function dropPosition(fraction: number, nested?: boolean): DropPosition
+
+export function placeGroupedItems<T extends { id: string; groupId: string }>(items: T[], sourceIds: string[], targetId: string, position: InsertPosition): T[]

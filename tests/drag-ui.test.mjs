@@ -5,9 +5,11 @@ import { createServer } from 'vite'
 import { createElement, act } from 'react'
 
 test('rendered app routes drag events for boards, folder hierarchies, links and kubeconfig manual sorting', async () => {
-  const dom = new JSDOM('<div id="root"></div>', { url: 'https://orbit-test.invalid/' })
+  const dom = new JSDOM('<div id="root"></div>', { pretendToBeVisual: true, url: 'https://orbit-test.invalid/' })
+  dom.window.Range.prototype.getClientRects = () => []
+  dom.window.Range.prototype.getBoundingClientRect = () => ({ top: 0, left: 0, bottom: 0, right: 0, width: 0, height: 0 })
   const saved = new Map()
-  for (const [key, value] of Object.entries({ window: dom.window, document: dom.window.document, HTMLElement: dom.window.HTMLElement, Element: dom.window.Element, Node: dom.window.Node, navigator: dom.window.navigator, localStorage: dom.window.localStorage, IS_REACT_ACT_ENVIRONMENT: true })) {
+  for (const [key, value] of Object.entries({ window: dom.window, document: dom.window.document, HTMLElement: dom.window.HTMLElement, Element: dom.window.Element, Node: dom.window.Node, MutationObserver: dom.window.MutationObserver, Window: dom.window.Window, navigator: dom.window.navigator, localStorage: dom.window.localStorage, IS_REACT_ACT_ENVIRONMENT: true })) {
     saved.set(key, Object.getOwnPropertyDescriptor(globalThis, key))
     Object.defineProperty(globalThis, key, { configurable: true, writable: true, value })
   }
@@ -17,13 +19,13 @@ test('rendered app routes drag events for boards, folder hierarchies, links and 
     const { default: App } = await server.ssrLoadModule('/src/App.tsx')
     const { createRoot } = await import('react-dom/client')
     root = createRoot(document.getElementById('root'))
-    await act(() => root.render(createElement(App)))
+    await act(async () => root.render(createElement(App)))
     const button = (name) => {
-      const result = [...document.querySelectorAll('button')].find((item) => item.getAttribute('aria-label') === name || item.textContent.trim() === name)
+      const result = [...document.querySelectorAll('button')].find((item) => !item.closest('[hidden]') && (item.getAttribute('aria-label') === name || item.textContent.trim() === name))
       assert.ok(result, `Missing button: ${name}`)
       return result
     }
-    const click = async (element) => { await act(() => element.click()) }
+    const click = async (element) => { await act(async () => { element.click(); await Promise.resolve() }) }
     const drag = async (source, target, fraction = .5, beforeDrop) => {
       const transfer = { setData() {}, setDragImage() {}, effectAllowed: '', dropEffect: '' }
       const event = (type, current, y) => {
@@ -60,18 +62,20 @@ test('rendered app routes drag events for boards, folder hierarchies, links and 
     await drag(button('拖动分组 工程效率 / Kubernetes'), document.querySelector('[data-board-id="board-inspiration"]'), .5)
     assert.ok(button('选择分组 灵感收藏 / Kubernetes / 学习资料'))
     await click(button('选择分组 工程效率 / 常用工具'))
-    const linkTitles = () => [...document.querySelectorAll('.link-inline-title')].map((item) => item.value)
+    const linkTitles = () => [...document.querySelectorAll('.link-inline-title')].map((item) => item.tagName === 'INPUT' ? item.value : item.textContent)
     const opened = []
     dom.window.open = (...args) => { opened.push(args); return null }
     await click(button('打开 Google'))
     assert.equal(opened.length, 1, 'the large open area must open exactly once')
     assert.equal(opened[0][0], 'https://www.google.com/')
+    await click(button('编辑链接 Google'))
     for (const input of document.querySelectorAll('[data-link-id="link-google"] input')) await click(input)
     assert.equal(opened.length, 1, 'inline edits must not open the browser')
     await drag(button('拖动链接 JSON 转 YAML'), document.querySelector('[data-link-id="link-google"]'), .1)
     assert.deepEqual(linkTitles(), ['JSON 转 YAML', 'Google', 'OneTab'])
     // Inline editing must not initiate a drag.
-    const titleInput = document.querySelector('.link-inline-title')
+    await click(button('编辑链接 JSON 转 YAML'))
+    const titleInput = document.querySelector('input.link-inline-title')
     await drag(titleInput, document.querySelector('[data-link-id="link-google"]'), .5, () => assert.equal(document.querySelectorAll('.drag-preview').length, 0))
     assert.deepEqual(linkTitles(), ['JSON 转 YAML', 'Google', 'OneTab'])
     await drag(button('拖动链接 OneTab'), document.querySelector('[data-board-id="board-inspiration"]'), .5)
@@ -100,7 +104,7 @@ test('rendered app routes drag events for boards, folder hierarchies, links and 
     assert.equal(stored.find((item) => item.id === 'board-inspiration').groups.some((item) => item.name === '学习资料'), true)
     await act(() => root.unmount())
     root = createRoot(document.getElementById('root'))
-    await act(() => root.render(createElement(App)))
+    await act(async () => root.render(createElement(App)))
     await click(button('书签看板'))
     assert.deepEqual(boardOrder(), ['board-inspiration', 'board-engineering'])
     assert.ok(button('选择分组 灵感收藏 / Kubernetes / 学习资料'))

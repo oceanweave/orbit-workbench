@@ -11,6 +11,10 @@ interface Window {
     kubeconfigDirectory: () => Promise<string>
     pickDirectory: () => Promise<string | null>
     saveKubeconfigFile: (input: { directoryPath: string; fileName: string; content: string }) => Promise<OrbitKubeFile>
-    writeKubeconfigFile: (input: { path: string; content: string }) => Promise<OrbitKubeFile>
+    writeKubeconfigFile: (input: { path: string; content: string; expectedContent?: string }) => Promise<OrbitKubeFile>
+    storageInfo: () => Promise<{ directory: string }>
+    openStorage: () => Promise<string>
+    revealKubeconfig: (path: string) => Promise<void>
+    readKubeconfig: (path: string) => Promise<OrbitKubeFile>
   }
 }

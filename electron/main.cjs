@@ -1,11 +1,8 @@
 const { app, BrowserWindow, clipboard, dialog, ipcMain, shell } = require('electron')
-const { readKubeFile, scanKubeDirectory, saveManagedKubeFile } = require('./kube-files.cjs')
-const fs = require('node:fs/promises')
-const os = require('node:os')
+const { readKubeFile, scanKubeDirectory, saveManagedKubeFile, writeKubeFile } = require('./kube-files.cjs')
 const path = require('node:path')
 
 const isExternalUrl = (url) => /^(https?:|chrome-extension:)/i.test(url)
-const expandUserPath = (value) => value.startsWith('~/') ? path.join(os.homedir(), value.slice(2)) : value
 
 function createWindow() {
   const window = new BrowserWindow({
@@ -59,12 +56,14 @@ ipcMain.handle('orbit:save-kubeconfig-file', async (_event, input) => {
 })
 
 ipcMain.handle('orbit:write-kubeconfig-file', async (_event, input) => {
-  const targetPath = expandUserPath(String(input?.path ?? ''))
-  const content = String(input?.content ?? '')
-  if (!targetPath) throw new Error('缺少 kubeconfig 文件路径')
-  await fs.writeFile(targetPath, content, { encoding: 'utf8', mode: 0o600 })
-  return { path: targetPath, content }
+  if (!input?.path) throw new Error('缺少 kubeconfig 文件路径')
+  return writeKubeFile({ path: String(input.path), content: String(input.content ?? ''), expectedContent: input.expectedContent })
 })
+
+ipcMain.handle('orbit:storage-info', () => ({ directory: app.getPath('userData') }))
+ipcMain.handle('orbit:open-storage', () => shell.openPath(app.getPath('userData')))
+ipcMain.handle('orbit:reveal-kubeconfig', async (_event, filePath) => { const file = await readKubeFile(String(filePath)); shell.showItemInFolder(file.path) })
+ipcMain.handle('orbit:read-kubeconfig', (_event, filePath) => readKubeFile(String(filePath)))
 
 app.whenReady().then(() => {
   createWindow()

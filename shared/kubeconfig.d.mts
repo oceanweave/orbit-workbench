@@ -1,6 +1,7 @@
 import type { KubeConfig } from '../src/types'
 export const MAX_KUBECONFIG_BYTES: number
 export function inspectKubeconfig(content: string): { context: string; contexts: string[]; server: string }
+export function setKubeCurrentContext(content: string, context: string): string
 export function kubeFileStem(path: string): string
 export function kubeEnvName(value: string): string
 export function uniqueEnvName(value: string, used: Set<string>): string

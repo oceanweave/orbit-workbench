@@ -1,4 +1,5 @@
 import { parseDocument } from 'yaml'
+import { validateEnvName } from './kube-command.mjs'
 
 export const MAX_KUBECONFIG_BYTES = 2 * 1024 * 1024
 
@@ -29,6 +30,14 @@ export function inspectKubeconfig(content) {
   return { context, contexts: names, server: typeof cluster?.cluster?.server === 'string' ? cluster.cluster.server : '' }
 }
 
+export function setKubeCurrentContext(content, context) {
+  const metadata = inspectKubeconfig(content)
+  if (!metadata.contexts.includes(context)) throw new Error('此 Context 不在配置文件中')
+  const document = parseDocument(content, { prettyErrors: false, logLevel: 'silent' })
+  document.set('current-context', context)
+  return document.toString()
+}
+
 export function kubeFileStem(filePath) {
   const name = filePath.split(/[\\/]/).pop() || 'config'
   return name.replace(/\.[^.]+$/, '') || name
@@ -43,7 +52,7 @@ export function uniqueEnvName(value, used) {
   const base = kubeEnvName(value)
   let name = base
   let index = 2
-  while (used.has(name)) name = `${base}_${index++}`
+  while (used.has(name) || validateEnvName(name)) name = `${base}_${index++}`
   used.add(name)
   return name
 }

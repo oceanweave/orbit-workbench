@@ -5,11 +5,13 @@ import { createServer } from 'vite'
 import { createElement, act } from 'react'
 
 test('command library: CRUD, exact copy, composition-safe submission, drag, bulk actions, persistence and failed save recovery', async () => {
-  const dom = new JSDOM('<div id="root"></div>', { url: 'https://command-library-test.invalid/' })
+  const dom = new JSDOM('<div id="root"></div>', { pretendToBeVisual: true, url: 'https://command-library-test.invalid/' })
+  dom.window.Range.prototype.getClientRects = () => []
+  dom.window.Range.prototype.getBoundingClientRect = () => ({ top: 0, left: 0, bottom: 0, right: 0, width: 0, height: 0 })
   const saved = new Map()
   const copied = []
   Object.defineProperty(dom.window.navigator, 'clipboard', { value: { writeText: async (text) => { copied.push(text) } } })
-  for (const [key, value] of Object.entries({ window: dom.window, document: dom.window.document, HTMLElement: dom.window.HTMLElement, Element: dom.window.Element, Node: dom.window.Node, navigator: dom.window.navigator, localStorage: dom.window.localStorage, IS_REACT_ACT_ENVIRONMENT: true })) {
+  for (const [key, value] of Object.entries({ window: dom.window, document: dom.window.document, HTMLElement: dom.window.HTMLElement, Element: dom.window.Element, Node: dom.window.Node, MutationObserver: dom.window.MutationObserver, Window: dom.window.Window, navigator: dom.window.navigator, localStorage: dom.window.localStorage, IS_REACT_ACT_ENVIRONMENT: true })) {
     saved.set(key, Object.getOwnPropertyDescriptor(globalThis, key))
     Object.defineProperty(globalThis, key, { configurable: true, writable: true, value })
   }
@@ -25,13 +27,13 @@ test('command library: CRUD, exact copy, composition-safe submission, drag, bulk
     }
     const { createRoot } = await import('react-dom/client')
     root = createRoot(document.getElementById('root'))
-    await act(() => root.render(createElement(App)))
+    await act(async () => root.render(createElement(App)))
     const button = (name) => {
-      const result = [...document.querySelectorAll('button')].find((item) => item.getAttribute('aria-label') === name || item.textContent.trim() === name)
+      const result = [...document.querySelectorAll('button')].find((item) => !item.closest('[hidden]') && (item.getAttribute('aria-label') === name || item.textContent.trim() === name))
       assert.ok(result, `Missing button: ${name}`)
       return result
     }
-    const click = async (element) => { await act(() => element.click()) }
+    const click = async (element) => { await act(async () => { element.click(); await Promise.resolve() }) }
     const fill = async (element, value) => {
       assert.ok(element)
       const prototype = element.tagName === 'TEXTAREA' ? dom.window.HTMLTextAreaElement.prototype : dom.window.HTMLInputElement.prototype
@@ -148,7 +150,7 @@ test('command library: CRUD, exact copy, composition-safe submission, drag, bulk
     await click(button('清空搜索'))
     await act(() => root.unmount())
     root = createRoot(document.getElementById('root'))
-    await act(() => root.render(createElement(App)))
+    await act(async () => root.render(createElement(App)))
     await click(button('命令管理'))
     assert.equal(document.querySelectorAll('[data-command-id]').length, 3)
     assert.deepEqual([...document.querySelectorAll('[data-command-id]')].map((item) => item.dataset.commandId), ['snippet-pods', 'snippet-git', 'snippet-powershell'])

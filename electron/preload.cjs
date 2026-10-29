@@ -8,4 +8,8 @@ contextBridge.exposeInMainWorld('orbitDesktop', {
   pickDirectory: () => ipcRenderer.invoke('orbit:pick-directory'),
   saveKubeconfigFile: (input) => ipcRenderer.invoke('orbit:save-kubeconfig-file', input),
   writeKubeconfigFile: (input) => ipcRenderer.invoke('orbit:write-kubeconfig-file', input),
+  storageInfo: () => ipcRenderer.invoke('orbit:storage-info'),
+  openStorage: () => ipcRenderer.invoke('orbit:open-storage'),
+  revealKubeconfig: (path) => ipcRenderer.invoke('orbit:reveal-kubeconfig', path),
+  readKubeconfig: (path) => ipcRenderer.invoke('orbit:read-kubeconfig', path),
 })

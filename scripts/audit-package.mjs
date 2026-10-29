@@ -5,7 +5,7 @@ import { pathToFileURL } from 'node:url'
 // Only generated frontend assets, application modules, the package manifest and
 // installed dependencies belong in a distributable. User imports and Electron's
 // userData directory are deliberately outside this boundary, regardless of suffix.
-const applicationFile = /^\/(?:dist\/(?:index\.html|assets\/[^/]+\.(?:js|css|svg|png|jpe?g|webp|woff2?|ico))|electron\/(?:main|preload|kube-files)\.cjs|shared\/(?:bookmarks|commands|kubeconfig|ordering)\.(?:mjs|d\.mts)|package\.json)$/
+const applicationFile = /^\/(?:dist\/(?:index\.html|assets\/[^/]+\.(?:js|css|svg|png|jpe?g|webp|woff2?|ico))|electron\/(?:main|preload|kube-files)\.cjs|shared\/(?:bookmarks|commands|kubeconfig|kube-command|workspace|ordering)\.(?:mjs|d\.mts)|package\.json)$/
 const userDataSegment = /(?:^|\/)(?:\.kube|kubeconfigs|local-data|Local Storage|Session Storage|IndexedDB|Cookies(?:-journal)?)(?:\/|$)/i
 
 export function auditPackage(archive) {

@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { reorderItems, placeGroupedItem, orderVisibleItems, dropPosition } from '../shared/ordering.mjs'
+import { placeGroupedItems, reorderItems, placeGroupedItem, orderVisibleItems, dropPosition } from '../shared/ordering.mjs'
 
 test('boards and environment groups can reorder in either direction without mutating stored data', () => {
   const items = ['a', 'b', 'c', 'd'].map((id) => ({ id }))
@@ -30,4 +30,12 @@ test('switching from automatic sorting freezes the visible order while retaining
 test('folder hit zones distinguish sibling insertion from nesting with stable boundaries', () => {
   assert.deepEqual([0, .24, .25, .5, .75, .76, 1].map((ratio) => dropPosition(ratio, true)), ['before', 'before', 'inside', 'inside', 'inside', 'after', 'after'])
   assert.deepEqual([0, .49, .5, 1].map((ratio) => dropPosition(ratio)), ['before', 'before', 'after', 'after'])
+})
+
+test('multi-selection insertion keeps source order and hidden siblings, adopting one target group', () => {
+  const items = [{ id: 'a', groupId: 'one' }, { id: 'hidden', groupId: 'two' }, { id: 'b', groupId: 'one' }, { id: 'c', groupId: 'three' }]
+  const next = placeGroupedItems(items, ['b', 'a'], 'c', 'after')
+  assert.deepEqual(next.map((item) => item.id), ['hidden', 'c', 'a', 'b'])
+  assert.ok(next.slice(2).every((item) => item.groupId === 'three'))
+  assert.deepEqual(items.map((item) => item.id), ['a', 'hidden', 'b', 'c'])
 })
