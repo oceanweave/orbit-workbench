@@ -42,7 +42,7 @@ npm run build
 
 ```bash
 npm run app:dir
-open "release/mac-arm64/Orbit Workbench.app"
+open "release/local-macos/mac-arm64/Orbit Workbench.app"
 ```
 
 也可以生成 DMG：
@@ -51,7 +51,9 @@ open "release/mac-arm64/Orbit Workbench.app"
 npm run app:dmg
 ```
 
-本地包使用 arm64 架构，暂未配置 Developer ID 签名。第一次在其他 Mac 上打开时，系统可能需要在 Finder 中右键应用并选择“打开”。
+本地包在 `release/local-macos/`，文件名带 `-local`，使用完整 ad-hoc 签名，仅用于本机开发验证。它不具备其他 Mac 所需的 Developer ID 信任与 Apple 公证，不能作为正式分发包。不会关闭 Gatekeeper 或清除下载隔离属性。
+
+正式分发使用 `npm run app:release:mac`，生成 Apple Silicon（arm64）及 Intel（x64）两个 DMG，必须提供 Developer ID Application 证书及公证凭据。缺少凭据、签名不完整、公证失败或 Gatekeeper 拒绝均终止发布。配置与验收步骤见 [macOS 签名与分发](docs/macos-distribution.md)。
 
 ## Windows 应用
 
@@ -70,7 +72,7 @@ npm run app:win:zip
 
 产物位于 `release/`，文件名类似 `Orbit-Workbench-${version}-x64.exe` 和 `Orbit-Workbench-${version}-x64.zip`。macOS 可以交叉构建这些产物；本机只验证了打包和文件结构，未在 Windows 10/11 虚拟机或实体机上运行安装器。提交发布前应在 `windows-latest` CI 或实际 Windows 10/11 环境执行安装、启动、文件选择和 kubeconfig 写回 smoke test。
 
-推送 `v*` tag 后，`.github/workflows/release.yml` 会在 macOS 和 Windows runner 上分别构建，并自动创建 GitHub Release 上传 DMG、NSIS EXE 和 ZIP 资产。发布构建统一使用 Node.js 22，以满足当前 Electron 打包依赖的运行时要求；electron-builder 只负责生成文件，Release job 负责上传。
+配置 Apple 签名与公证 Secrets 后，推送 `v*` tag 会在 macOS 和 Windows runner 上分别构建，通过检查后创建 GitHub Release，上传两种架构的 DMG、NSIS EXE、ZIP 及 SHA256SUMS.txt。未配置凭据时 macOS 任务失败，Release 不会发布，不能用本地包代替正式包。构建统一使用 Node.js 22；生成文件和上传发布分开执行。
 
 ## 0.2.0 工作流优化
 
@@ -137,10 +139,10 @@ git diff --check
 
 ## 发布与本地数据隔离
 
-`v*` tag 触发 GitHub Actions 生成 DMG、Windows EXE 和 ZIP，再发布到 GitHub Release。发布前会运行全部测试并对实际 `app.asar` 检查：只允许构建资源、应用模块及安装依赖，检测到本地导入文件或浏览器存储则终止发布。可手动执行：
+`v*` tag 触发 GitHub Actions 生成签名并公证的 DMG、Windows EXE 和 ZIP，再发布到 GitHub Release。发布前会运行全部测试并对实际 `app.asar` 检查：只允许构建资源、应用模块及安装依赖，检测到本地导入文件或浏览器存储则终止发布。可手动检查本地包：
 
 ```bash
-npm run package:audit -- "release/mac-arm64/Orbit Workbench.app/Contents/Resources/app.asar"
+npm run package:audit -- "release/local-macos/mac-arm64/Orbit Workbench.app/Contents/Resources/app.asar"
 ```
 
 用户的 kubeconfig、书签、命令记录及备份只保留在本机，不纳入 Git 或安装包；代码中的公开链接和无凭据配置仅用于演示和测试。源码与模拟测试可以上传，真实数据不要放入项目目录。

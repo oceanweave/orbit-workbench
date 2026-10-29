@@ -44,7 +44,7 @@ git diff --check
 
 ## 发布检查
 
-生成 macOS 本地包：
+生成 macOS 本地开发包（ad-hoc，仅本机验证）：
 
 ```bash
 npm run app:dir
@@ -53,12 +53,14 @@ npm run app:dmg
 
 发布前确认：
 
-- 应用能从 `release/mac-arm64/Orbit Workbench.app` 启动。
+- 应用能从 `release/local-macos/mac-arm64/Orbit Workbench.app` 启动。
 - 书签页面和 Kubeconfig 页面均能打开。
 - 亮色/暗色主题、分组、详情、Context 和命令复制流程正常。
 - 命令管理弹窗中的长名称、长命令和说明不会被输入框截断。
 - Kubeconfig 添加流程验证了无后缀文件、`.txt` 文件和粘贴内容。
 - 发布包不包含测试数据或敏感文件。
+
+正式 macOS 发布执行 `npm run app:release:mac`，需先配置 Developer ID Application 证书与 Apple 公证凭据；禁止把 `-local.dmg` 作为正式安装包上传。脚本会检查签名、Hardened Runtime、公证票据、Gatekeeper、镜像校验和以及挂载后的实际应用，详见 [macOS 签名与分发](docs/macos-distribution.md)。
 
 ## 远程仓库
 

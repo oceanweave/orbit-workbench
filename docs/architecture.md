@@ -110,13 +110,14 @@ Kubeconfig 记录还包含用户可编辑的 `envName`（环境变量名称）�
 
 `npm run build` 先运行 TypeScript 项目引用检查，再生成 `dist/`。Electron 主进程通过 `loadFile` 加载构建后的 `dist/index.html`，避免生产环境下资源路径失效。
 
-- `npm run app:dir`：生成可直接运行的 macOS `.app` 目录。
-- `npm run app:dmg`：生成 Apple Silicon arm64 DMG。
+- `npm run app:dir`：生成完整 ad-hoc 签名的本机 macOS `.app` 目录。
+- `npm run app:dmg`：生成 Apple Silicon arm64 本地开发 DMG，产物在 `release/local-macos/` 并带 `-local` 后缀。
+- `npm run app:release:mac`：正式签名、公证并验证 arm64/x64 DMG；缺少 Developer ID 或 Apple 凭据时失败，不产生可发布替代品。
 - `npm run app:win:dir`：生成 Windows x64 免安装目录，可用于启动 smoke test。
 - `npm run app:win:nsis`：生成 Windows x64 NSIS 安装程序。
 - `npm run app:win:zip`：生成 Windows x64 zip 便携包。
 
-Windows 目标面向 Windows 10 和 Windows 11 x64。macOS 可以通过 Electron Builder 交叉打包；本机验证的是构建、安装包文件和免安装目录结构，`.github/workflows/windows.yml` 在 `windows-latest` 上执行 Windows 构建 smoke test。发布前仍应在实际 Windows 10/11 环境验证安装、启动、文件选择和 kubeconfig 写回。当前包未配置 Developer ID 签名、公证或 Windows 代码签名。
+Windows 目标面向 Windows 10 和 Windows 11 x64。macOS 可以通过 Electron Builder 交叉打包；本机验证的是构建、安装包文件和免安装目录结构，`.github/workflows/windows.yml` 在 `windows-latest` 上执行 Windows 构建 smoke test。发布前仍应在实际 Windows 10/11 环境验证安装、启动、文件选择和 kubeconfig 写回。Windows 代码签名尚未配置。macOS 正式发布已接入强制签名、公证、Gatekeeper 及挂载检查，但须配置 Apple 凭据后才能实际运行；本地 ad-hoc 构建不代表跨机信任通过。详见 [macOS 签名与分发](macos-distribution.md)。
 
 ## 后续拆分建议
 

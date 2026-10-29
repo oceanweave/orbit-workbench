@@ -23,10 +23,14 @@ jobs:
         run: npm ci
       - name: Test local kubeconfig imports
         run: node scripts/run-ci-tests.mjs
-      - name: Build macOS DMG
-        run: npm run app:dmg
-      - name: Audit macOS package contents
-        run: npm run package:audit -- "release/mac-arm64/Orbit Workbench.app/Contents/Resources/app.asar"
+      - name: Build signed and notarized macOS DMGs (Apple Silicon and Intel)
+        run: npm run app:release:mac
+        env:
+          CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
       - name: Upload macOS artifact
         uses: actions/upload-artifact@v4
         with:
@@ -75,6 +79,9 @@ jobs:
         with:
           name: orbit-workbench-windows
           path: release
+      - name: Generate download checksums
+        working-directory: release
+        run: sha256sum Orbit-Workbench-*.dmg Orbit-Workbench-*.exe Orbit-Workbench-*.zip > SHA256SUMS.txt
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
@@ -83,3 +90,4 @@ jobs:
             release/Orbit-Workbench-*.dmg
             release/Orbit-Workbench-*.exe
             release/Orbit-Workbench-*.zip
+            release/SHA256SUMS.txt
